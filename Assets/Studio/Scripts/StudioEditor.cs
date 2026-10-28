@@ -275,7 +275,8 @@ namespace Studio
             Directory.CreateDirectory(ProjectsDir);
             var file = Path.Combine(ProjectsDir, SafeName(_projectName) + ".json");
             File.WriteAllText(file, JsonUtility.ToJson(Capture(), true));
-            Status("Сохранено: " + file);
+            WebBridge.SyncFS();
+            Status(WebBridge.IsWeb ? "Сохранено в браузере: " + _projectName : "Сохранено: " + file);
         }
 
         void Load(string file)
@@ -327,10 +328,21 @@ namespace Studio
             yield return null;
             yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
-            Directory.CreateDirectory(ShotsDir);
-            var file = Path.Combine(ShotsDir, SafeName(_projectName) + "_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png");
-            File.WriteAllBytes(file, tex.EncodeToPNG());
+            var shotName = SafeName(_projectName) + "_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
+            var png = tex.EncodeToPNG();
             Destroy(tex);
+            string file;
+            if (WebBridge.IsWeb)
+            {
+                WebBridge.Download(shotName, png, "image/png");
+                file = shotName + " (скачан браузером)";
+            }
+            else
+            {
+                Directory.CreateDirectory(ShotsDir);
+                file = Path.Combine(ShotsDir, shotName);
+                File.WriteAllBytes(file, png);
+            }
             _hideUI = prev;
             Status("Скриншот: " + file);
         }
@@ -393,7 +405,7 @@ namespace Studio
             rig.Cam.fieldOfView = GUILayout.HorizontalSlider(rig.Cam.fieldOfView, 20f, 90f);
             GUILayout.Space(8);
             if (GUILayout.Button("Скриншот для клиента (P)", GUILayout.Height(28))) StartCoroutine(Screenshot());
-            GUILayout.Label("Сохраняется в " + ShotsDir, _small);
+            GUILayout.Label(WebBridge.IsWeb ? "PNG скачается браузером" : "Сохраняется в " + ShotsDir, _small);
 
             GUILayout.Space(10);
             GUILayout.Label("Белая стена (фон)", _h2);
@@ -528,7 +540,13 @@ namespace Studio
             GUILayout.Label("Название варианта", _h2);
             _projectName = GUILayout.TextField(_projectName);
             if (GUILayout.Button("Сохранить вариант", GUILayout.Height(26))) Save();
-            GUILayout.Label("Папка: " + ProjectsDir, _small);
+            if (WebBridge.IsWeb)
+            {
+                GUILayout.Label("Варианты хранятся в этом браузере. Файл можно скачать и передать.", _small);
+                if (GUILayout.Button("Скачать вариант (.json)"))
+                    WebBridge.Download(SafeName(_projectName) + ".json", System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(Capture(), true)), "application/json");
+            }
+            else GUILayout.Label("Папка: " + ProjectsDir, _small);
 
             GUILayout.Space(8);
             GUILayout.Label("Сохранённые варианты", _h2);
@@ -565,8 +583,22 @@ namespace Studio
             if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label(GUI.tooltip, _small);
         }
 
+        System.Action<string> _webImageTarget;
+
         void DrawImagePicker(ref string path, System.Action<string> apply)
         {
+            if (WebBridge.IsWeb)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Загрузить картинку…"))
+                {
+                    _webImageTarget = apply;
+                    WebBridge.PickImage(gameObject.name, nameof(OnWebImage));
+                }
+                if (GUILayout.Button("Убрать")) { path = ""; apply(""); }
+                GUILayout.EndHorizontal();
+                return;
+            }
             path = GUILayout.TextField(path ?? "");
             GUILayout.BeginHorizontal();
 #if UNITY_EDITOR
@@ -579,6 +611,23 @@ namespace Studio
             if (GUILayout.Button("Применить")) apply(path.Trim().Trim('"'));
             if (GUILayout.Button("Убрать")) { path = ""; apply(""); }
             GUILayout.EndHorizontal();
+        }
+
+        /// <summary>Колбэк из браузера: "имя|base64". Картинка кладётся в persistentDataPath, чтобы её можно было сохранить в варианте.</summary>
+        public void OnWebImage(string payload)
+        {
+            int bar = payload.IndexOf('|');
+            if (bar < 0 || _webImageTarget == null) return;
+            var name = SafeName(payload.Substring(0, bar));
+            byte[] bytes;
+            try { bytes = System.Convert.FromBase64String(payload.Substring(bar + 1)); }
+            catch { Status("Не удалось прочитать картинку"); return; }
+            var dir = Path.Combine(Application.persistentDataPath, "Images");
+            Directory.CreateDirectory(dir);
+            var file = Path.Combine(dir, name);
+            File.WriteAllBytes(file, bytes);
+            WebBridge.SyncFS();
+            _webImageTarget(file);
         }
 
         void DrawHelp()

@@ -1,0 +1,6 @@
+*.fbx binary
+*.png binary
+*.jpg binary
+*.unity text eol=lf
+*.mat text eol=lf
+*.meta text eol=lf

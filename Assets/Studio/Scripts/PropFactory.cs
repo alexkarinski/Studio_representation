@@ -11,32 +11,68 @@ namespace Studio
         public class Entry
         {
             public string id, name, category;
+            /// <summary>Имя 3D-модели в Resources/Models (null — процедурный объект).</summary>
+            public string model;
+            public float modelYaw;
             public Color defaultColor;
             public Func<Transform, StudioProp, Color, GameObject> build;
         }
 
+        static Entry Model(string id, string model, string name, string category, Func<Transform, StudioProp, Color, GameObject> fallback = null, float yaw = 0)
+            => new Entry { id = id, model = model, modelYaw = yaw, name = name, category = category, defaultColor = Color.white, build = fallback };
+
         public static readonly List<Entry> Catalog = new List<Entry>
         {
-            new Entry { id = "armchair",    name = "Кресло",               category = "Мебель",     defaultColor = new Color(0.62f, 0.62f, 0.60f), build = Armchair },
-            new Entry { id = "sofa",        name = "Диван",                category = "Мебель",     defaultColor = new Color(0.25f, 0.32f, 0.45f), build = Sofa },
-            new Entry { id = "table_round", name = "Столик круглый",       category = "Мебель",     defaultColor = new Color(0.72f, 0.52f, 0.30f), build = RoundTable },
-            new Entry { id = "news_desk",   name = "Стол ведущего",        category = "Мебель",     defaultColor = new Color(0.92f, 0.92f, 0.92f), build = NewsDesk },
-            new Entry { id = "stool",       name = "Барный стул",          category = "Мебель",     defaultColor = new Color(0.10f, 0.10f, 0.10f), build = Stool },
-            new Entry { id = "bookshelf",   name = "Стеллаж",              category = "Мебель",     defaultColor = new Color(0.72f, 0.52f, 0.30f), build = Bookshelf },
-            new Entry { id = "shoji",       name = "Ширма сёдзи",          category = "Декор",      defaultColor = new Color(0.80f, 0.45f, 0.15f), build = Shoji },
-            new Entry { id = "plant",       name = "Растение",             category = "Декор",      defaultColor = new Color(0.20f, 0.45f, 0.20f), build = Plant },
-            new Entry { id = "rug",         name = "Ковёр круглый",        category = "Декор",      defaultColor = new Color(0.55f, 0.35f, 0.30f), build = Rug },
-            new Entry { id = "podium",      name = "Подиум",               category = "Декор",      defaultColor = new Color(0.12f, 0.12f, 0.13f), build = Podium },
-            new Entry { id = "logo_panel",  name = "Панель с логотипом",   category = "Декор",      defaultColor = new Color(0.95f, 0.95f, 0.95f), build = LogoPanel },
-            new Entry { id = "neon_ring",   name = "Неоновое кольцо",      category = "Декор",      defaultColor = new Color(1.00f, 0.25f, 0.60f), build = NeonRing },
-            new Entry { id = "floor_lamp",  name = "Торшер",               category = "Декор",      defaultColor = new Color(1.00f, 0.80f, 0.55f), build = FloorLamp },
-            new Entry { id = "led_wall",    name = "LED-экран 4×2.25 м",   category = "Техника",    defaultColor = new Color(0.30f, 0.55f, 0.90f), build = LedWall },
-            new Entry { id = "tv_stand",    name = "Монитор на стойке",    category = "Техника",    defaultColor = new Color(0.45f, 0.75f, 0.85f), build = TvStand },
-            new Entry { id = "studio_cam",  name = "Камера на штативе",    category = "Техника",    defaultColor = new Color(0.08f, 0.08f, 0.09f), build = TripodCamera },
-            new Entry { id = "pedestal_cam",name = "Камера на пьедестале", category = "Техника",    defaultColor = new Color(0.75f, 0.76f, 0.78f), build = PedestalCamera },
+            // 3D-модели Poly Haven (CC0). Цвет для них — тонировка поверх текстуры (белый = оригинал).
+            Model("armchair_classic", "ArmChair_01",              "Кресло серое (как на фото)", "Мебель", Armchair),
+            Model("armchair_modern",  "modern_arm_chair_01",      "Кресло кожаное",             "Мебель", Armchair),
+            Model("lounge_chair",     "mid_century_lounge_chair", "Кресло лаунж",               "Мебель", Armchair),
+            Model("sofa_light",       "Sofa_01",                  "Диван светлый",              "Мебель", Sofa),
+            Model("sofa_chester",     "sofa_02",                  "Диван честерфилд",           "Мебель", Sofa),
+            Model("ottoman",          "Ottoman_01",               "Пуф",                        "Мебель"),
+            Model("coffee_round",     "coffee_table_round_01",    "Столик мраморный",           "Мебель", RoundTable),
+            Model("coffee_modern",    "modern_coffee_table_01",   "Столик журнальный",          "Мебель", RoundTable),
+            Model("side_table",       "side_table_01",            "Тумба приставная",           "Мебель"),
+            Model("side_table_tall",  "side_table_tall_01",       "Столик высокий",             "Мебель"),
+            Model("bar_chair",        "bar_chair_round_01",       "Барный стул деревянный",     "Мебель", Stool),
+            Model("metal_stool",      "metal_stool_02",           "Табурет лофт",               "Мебель", Stool),
+            Model("cabinet",          "modern_wooden_cabinet",    "Комод низкий",               "Мебель"),
+            Model("shelves_steel",    "steel_frame_shelves_03",   "Стеллаж лофт",               "Мебель", Bookshelf),
+            Model("shelves_wood",     "wooden_display_shelves_01","Стеллаж деревянный",         "Мебель", Bookshelf),
+            Model("plant_big",        "potted_plant_02",          "Растение крупное",           "Декор", Plant),
+            Model("plant_tree",       "potted_plant_01",          "Деревце в горшке",           "Декор", Plant),
+            Model("plant_succulent",  "potted_plant_04",          "Суккулент",                  "Декор", Plant),
+            Model("vase",             "ceramic_vase_01",          "Ваза",                       "Декор"),
+            Model("pillows",          "throw_pillows_01",         "Подушки",                    "Декор"),
+            Model("picture",          "standing_picture_frame_01","Картина в раме",             "Декор"),
+
+            // процедурные (форма как на фото / простая геометрия)
+            new Entry { id = "table_round", name = "Столик как на фото",   category = "Мебель",  defaultColor = new Color(0.72f, 0.52f, 0.30f), build = RoundTable },
+            new Entry { id = "news_desk",   name = "Стол ведущего",        category = "Мебель",  defaultColor = new Color(0.92f, 0.92f, 0.92f), build = NewsDesk },
+            new Entry { id = "shoji",       name = "Ширма сёдзи",          category = "Декор",   defaultColor = new Color(0.80f, 0.45f, 0.15f), build = Shoji },
+            new Entry { id = "rug",         name = "Ковёр круглый",        category = "Декор",   defaultColor = new Color(0.55f, 0.35f, 0.30f), build = Rug },
+            new Entry { id = "podium",      name = "Подиум",               category = "Декор",   defaultColor = new Color(0.12f, 0.12f, 0.13f), build = Podium },
+            new Entry { id = "logo_panel",  name = "Панель с логотипом",   category = "Декор",   defaultColor = new Color(0.95f, 0.95f, 0.95f), build = LogoPanel },
+            new Entry { id = "neon_ring",   name = "Неоновое кольцо",      category = "Декор",   defaultColor = new Color(1.00f, 0.25f, 0.60f), build = NeonRing },
+            new Entry { id = "floor_lamp",  name = "Торшер",               category = "Декор",   defaultColor = new Color(1.00f, 0.80f, 0.55f), build = FloorLamp },
+            new Entry { id = "led_wall",    name = "LED-экран 4×2.25 м",   category = "Техника", defaultColor = new Color(0.30f, 0.55f, 0.90f), build = LedWall },
+            new Entry { id = "tv_stand",    name = "Монитор на стойке",    category = "Техника", defaultColor = new Color(0.45f, 0.75f, 0.85f), build = TvStand },
+            new Entry { id = "studio_cam",  name = "Камера на штативе",    category = "Техника", defaultColor = new Color(0.08f, 0.08f, 0.09f), build = TripodCamera },
+            new Entry { id = "pedestal_cam",name = "Камера на пьедестале", category = "Техника", defaultColor = new Color(0.75f, 0.76f, 0.78f), build = PedestalCamera },
         };
 
-        public static Entry Find(string id) => Catalog.Find(e => e.id == id);
+        /// <summary>Старые id из сохранённых проектов → новые.</summary>
+        static readonly Dictionary<string, string> Aliases = new Dictionary<string, string>
+        {
+            { "armchair", "armchair_classic" }, { "sofa", "sofa_light" }, { "stool", "bar_chair" },
+            { "bookshelf", "shelves_wood" }, { "plant", "plant_big" },
+        };
+
+        public static Entry Find(string id)
+        {
+            if (id != null && Aliases.TryGetValue(id, out var alias)) id = alias;
+            return Catalog.Find(e => e.id == id);
+        }
 
         public static StudioProp Create(string id, Transform parent, Vector3 pos, float rotY, Color? color = null)
         {
@@ -45,10 +81,17 @@ namespace Studio
             var root = new GameObject(e.name);
             root.transform.SetParent(parent, false);
             var prop = root.AddComponent<StudioProp>();
-            prop.typeId = id;
+            prop.typeId = e.id;
             prop.displayName = e.name;
             var c = color ?? e.defaultColor;
-            e.build(root.transform, prop, c);
+            bool built = e.model != null && ModelLibrary.Build(e.model, root.transform, prop, e.modelYaw);
+            if (!built)
+            {
+                // модели нет (не импортирована) — рисуем примитивами
+                if (e.model != null && e.build == null) Geo.Box("Placeholder", root.transform, new Vector3(0, 0.4f, 0), new Vector3(0.6f, 0.8f, 0.6f), M.Get("Placeholder", Color.grey));
+                else e.build(root.transform, prop, e.model != null ? new Color(0.62f, 0.62f, 0.6f) : c);
+            }
+            if (built && c != Color.white) prop.SetColor(c);
             prop.color = c;
             Geo.FitCollider(root);
             root.transform.localPosition = pos;

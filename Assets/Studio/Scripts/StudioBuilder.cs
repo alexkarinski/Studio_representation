@@ -267,9 +267,8 @@ namespace Studio
 
         void BuildDefaultSet()
         {
-            var grey = new Color(0.62f, 0.62f, 0.60f);
-            PropFactory.Create("armchair", set, new Vector3(1.6f, 0, -1.6f), -150, grey);
-            PropFactory.Create("armchair", set, new Vector3(0.6f, 0, -0.2f), 30, grey);
+            PropFactory.Create("armchair_classic", set, new Vector3(1.6f, 0, -1.6f), -150);
+            PropFactory.Create("armchair_classic", set, new Vector3(0.6f, 0, -0.2f), 30);
             PropFactory.Create("table_round", set, new Vector3(1.05f, 0, -0.9f), 0);
             PropFactory.Create("table_round", set, new Vector3(1.45f, 0, -0.55f), 0);
             PropFactory.Create("shoji", set, new Vector3(3.7f, 0, -2.6f), -60, new Color(0.95f, 0.95f, 0.95f));
