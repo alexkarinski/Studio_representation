@@ -74,7 +74,7 @@ namespace Studio
         {
             if (_hideUI) return false;
             var m = Input.mousePosition;
-            var gui = new Vector2(m.x, Screen.height - m.y);
+            var gui = new Vector2(m.x, Screen.height - m.y) / UiScale;
             return _panelRect.Contains(gui) || HelpRect.Contains(gui) || GUIUtility.hotControl != 0;
         }
 
@@ -353,28 +353,47 @@ namespace Studio
 
         GUIStyle _box, _h1, _h2, _small, _swatch;
         Texture2D _bgTex, _white;
+        Font _font, _fontBold;
+
+        /// <summary>Масштаб интерфейса: на ретине/4K в браузере канвас в 2–3 раза плотнее.</summary>
+        static float UiScale => Mathf.Clamp(Mathf.Min(Screen.dpi > 0 ? Screen.dpi / 96f : 1f, Screen.height / 620f), 1f, 3f);
+        static float UiW => Screen.width / UiScale;
+        static float UiH => Screen.height / UiScale;
 
         void InitStyles()
         {
             if (_box != null) return;
+            // встроенный шрифт в WebGL без кириллицы — берём PT Sans (OFL) из Resources
+            _font = Resources.Load<Font>("Fonts/PTSans-Regular");
+            _fontBold = Resources.Load<Font>("Fonts/PTSans-Bold");
+            if (_font != null)
+            {
+                GUI.skin.font = _font;
+                foreach (var st in new[] { GUI.skin.label, GUI.skin.button, GUI.skin.toggle, GUI.skin.textField, GUI.skin.box, GUI.skin.window })
+                {
+                    st.font = _font;
+                    st.fontSize = 13;
+                }
+            }
             _bgTex = new Texture2D(1, 1); _bgTex.SetPixel(0, 0, new Color(0.08f, 0.085f, 0.095f, 0.92f)); _bgTex.Apply();
             _white = Texture2D.whiteTexture;
             _box = new GUIStyle(GUI.skin.box) { normal = { background = _bgTex }, padding = new RectOffset(10, 10, 10, 10) };
-            _h1 = new GUIStyle(GUI.skin.label) { fontSize = 15, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.95f, 0.85f, 0.6f) } };
-            _h2 = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold, normal = { textColor = new Color(0.75f, 0.85f, 0.95f) } };
-            _small = new GUIStyle(GUI.skin.label) { fontSize = 11, wordWrap = true, normal = { textColor = new Color(0.75f, 0.75f, 0.78f) } };
+            _h1 = new GUIStyle(GUI.skin.label) { font = _fontBold ?? _font, fontSize = 17, normal = { textColor = new Color(0.95f, 0.85f, 0.6f) } };
+            _h2 = new GUIStyle(GUI.skin.label) { font = _fontBold ?? _font, fontSize = 14, normal = { textColor = new Color(0.75f, 0.85f, 0.95f) } };
+            _small = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true, normal = { textColor = new Color(0.75f, 0.75f, 0.78f) } };
             _swatch = new GUIStyle(GUI.skin.button) { margin = new RectOffset(2, 2, 2, 2) };
         }
 
-        Rect HelpRect => _showHelp ? new Rect(Screen.width - 300, Screen.height - 190, 290, 180) : new Rect(Screen.width - 120, Screen.height - 34, 110, 26);
+        Rect HelpRect => _showHelp ? new Rect(UiW - 310, UiH - 200, 300, 190) : new Rect(UiW - 120, UiH - 34, 110, 26);
 
         void OnGUI()
         {
             if (_hideUI) { _panelRect = Rect.zero; return; }
             InitStyles();
+            GUI.matrix = Matrix4x4.Scale(new Vector3(UiScale, UiScale, 1f));
 
-            float w = 340;
-            _panelRect = new Rect(8, 8, w, Screen.height - 16);
+            float w = 350;
+            _panelRect = new Rect(8, 8, w, UiH - 16);
             GUILayout.BeginArea(_panelRect, _box);
             GUILayout.Label("Студия — визуализация оформления", _h1);
             GUILayout.Space(4);

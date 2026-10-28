@@ -42,6 +42,9 @@ namespace Studio.EditorTools
             PlayerSettings.WebGL.decompressionFallback = true;
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
+            PlayerSettings.WebGL.template = "PROJECT:Fullscreen";
+            // объекты собираются из кода (CreatePrimitive и т.п.) — движок не должен вырезать «неиспользуемые» компоненты
+            PlayerSettings.stripEngineCode = false;
         }
 
         /// <summary>

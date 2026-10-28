@@ -1,0 +1,9 @@
+<!-- Не вырезать физику и рендер при сборке: объекты создаются из кода (CreatePrimitive, AddComponent). -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all"/>
+  <assembly fullname="UnityEngine.CoreModule">
+    <type fullname="UnityEngine.MeshRenderer" preserve="all"/>
+    <type fullname="UnityEngine.MeshFilter" preserve="all"/>
+    <type fullname="UnityEngine.Light" preserve="all"/>
+  </assembly>
+</linker>

@@ -14,7 +14,7 @@ namespace Studio
         public string wallImage = "";
         public Color floorColor = new Color(0.78f, 0.78f, 0.77f);
         public float lightMaster = 1f;
-        public float lightKelvin = 3600f;
+        public float lightKelvin = 4300f;
         public float ambient = 0.16f;
         public bool[] fixtures = new bool[0];
         public bool showEquipment = true;

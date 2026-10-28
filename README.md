@@ -4,6 +4,8 @@
 
 ## Запуск на GitHub (веб-версия по ссылке)
 
+**Открыть студию: https://alexkarinski.github.io/Studio_representation/**
+
 Сборку делает GitHub Actions (`.github/workflows/webgl.yml`, [game-ci](https://game.ci)) и публикует её на GitHub Pages:
 `https://alexkarinski.github.io/Studio_representation/`
 
@@ -47,6 +49,8 @@
 Мебель и декор — настоящие 3D-модели с [Poly Haven](https://polyhaven.com/models) (лицензия CC0, коммерческое использование разрешено): кресла, диваны, пуф, журнальные и приставные столики, барные стулья, стеллажи, комод, растения, ваза, подушки, картина в раме. Они лежат в `Assets/Studio/Resources/Models` вместе с PBR-текстурами (альбедо, нормали, металл/гладкость).
 
 Модели добавляются через `python3 tools/prepare_models.py <id>` (id берётся из адреса страницы модели на Poly Haven). Затем нужно добавить строку `Model(...)` в `PropFactory.Catalog`.
+
+Шрифт интерфейса: PT Sans (ParaType, SIL Open Font License), лежит в `Assets/Studio/Resources/Fonts`.
 
 Студийная техника (камеры, световые приборы, пантографы, LED-экран), ширмы-сёдзи и сами стены собраны из геометрии в коде. Готовых бесплатных CC0-моделей этой техники нет.
 
