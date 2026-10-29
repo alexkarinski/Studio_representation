@@ -24,41 +24,56 @@ namespace Studio
         public static readonly List<Entry> Catalog = new List<Entry>
         {
             // 3D-модели Poly Haven (CC0). Цвет для них — тонировка поверх текстуры (белый = оригинал).
-            Model("armchair_classic", "ArmChair_01",              "Кресло серое (как на фото)", "Мебель", Armchair),
-            Model("armchair_modern",  "modern_arm_chair_01",      "Кресло кожаное",             "Мебель", Armchair),
-            Model("lounge_chair",     "mid_century_lounge_chair", "Кресло лаунж",               "Мебель", Armchair),
-            Model("sofa_light",       "Sofa_01",                  "Диван светлый",              "Мебель", Sofa),
-            Model("sofa_chester",     "sofa_02",                  "Диван честерфилд",           "Мебель", Sofa),
-            Model("ottoman",          "Ottoman_01",               "Пуф",                        "Мебель"),
-            Model("coffee_round",     "coffee_table_round_01",    "Столик мраморный",           "Мебель", RoundTable),
-            Model("coffee_modern",    "modern_coffee_table_01",   "Столик журнальный",          "Мебель", RoundTable),
-            Model("side_table",       "side_table_01",            "Тумба приставная",           "Мебель"),
-            Model("side_table_tall",  "side_table_tall_01",       "Столик высокий",             "Мебель"),
-            Model("bar_chair",        "bar_chair_round_01",       "Барный стул деревянный",     "Мебель", Stool),
-            Model("metal_stool",      "metal_stool_02",           "Табурет лофт",               "Мебель", Stool),
-            Model("cabinet",          "modern_wooden_cabinet",    "Комод низкий",               "Мебель"),
-            Model("shelves_steel",    "steel_frame_shelves_03",   "Стеллаж лофт",               "Мебель", Bookshelf),
-            Model("shelves_wood",     "wooden_display_shelves_01","Стеллаж деревянный",         "Мебель", Bookshelf),
-            Model("plant_big",        "potted_plant_02",          "Растение крупное",           "Декор", Plant),
-            Model("plant_tree",       "potted_plant_01",          "Деревце в горшке",           "Декор", Plant),
-            Model("plant_succulent",  "potted_plant_04",          "Суккулент",                  "Декор", Plant),
-            Model("vase",             "ceramic_vase_01",          "Ваза",                       "Декор"),
-            Model("pillows",          "throw_pillows_01",         "Подушки",                    "Декор"),
-            Model("picture",          "standing_picture_frame_01","Картина в раме",             "Декор"),
+            Model("armchair_classic", "ArmChair_01",              "Sessel grau (wie auf Foto)", "Möbel", Armchair),
+            Model("armchair_modern",  "modern_arm_chair_01",      "Ledersessel",             "Möbel", Armchair),
+            Model("lounge_chair",     "mid_century_lounge_chair", "Loungesessel",               "Möbel", Armchair),
+            Model("sofa_light",       "Sofa_01",                  "Sofa hell",              "Möbel", Sofa),
+            Model("sofa_chester",     "sofa_02",                  "Chesterfield-Sofa",           "Möbel", Sofa),
+            Model("ottoman",          "Ottoman_01",               "Hocker gepolstert",                        "Möbel"),
+            Model("coffee_round",     "coffee_table_round_01",    "Marmortisch rund",           "Möbel", RoundTable),
+            Model("coffee_modern",    "modern_coffee_table_01",   "Couchtisch",          "Möbel", RoundTable),
+            Model("side_table",       "side_table_01",            "Beistelltisch",           "Möbel"),
+            Model("side_table_tall",  "side_table_tall_01",       "Stehtischchen",             "Möbel"),
+            Model("bar_chair",        "bar_chair_round_01",       "Barhocker Holz",     "Möbel", Stool),
+            Model("metal_stool",      "metal_stool_02",           "Hocker Loft",               "Möbel", Stool),
+            Model("cabinet",          "modern_wooden_cabinet",    "Sideboard",               "Möbel"),
+            Model("shelves_steel",    "steel_frame_shelves_03",   "Regal Loft",               "Möbel", Bookshelf),
+            Model("shelves_wood",     "wooden_display_shelves_01","Regal Holz",         "Möbel", Bookshelf),
+            Model("plant_big",        "potted_plant_02",          "Pflanze groß",           "Deko", Plant),
+            Model("plant_tree",       "potted_plant_01",          "Bäumchen im Topf",           "Deko", Plant),
+            Model("plant_succulent",  "potted_plant_04",          "Sukkulente",                  "Deko", Plant),
+            Model("vase",             "ceramic_vase_01",          "Vase",                       "Deko"),
+            Model("pillows",          "throw_pillows_01",         "Kissen",                    "Deko"),
+            Model("picture",          "standing_picture_frame_01","Bild im Rahmen",             "Deko"),
 
             // процедурные (форма как на фото / простая геометрия)
-            new Entry { id = "table_round", name = "Столик как на фото",   category = "Мебель",  defaultColor = new Color(0.72f, 0.52f, 0.30f), build = RoundTable },
-            new Entry { id = "news_desk",   name = "Стол ведущего",        category = "Мебель",  defaultColor = new Color(0.92f, 0.92f, 0.92f), build = NewsDesk },
-            new Entry { id = "shoji",       name = "Ширма сёдзи",          category = "Декор",   defaultColor = new Color(0.80f, 0.45f, 0.15f), build = Shoji },
-            new Entry { id = "rug",         name = "Ковёр круглый",        category = "Декор",   defaultColor = new Color(0.55f, 0.35f, 0.30f), build = Rug },
-            new Entry { id = "podium",      name = "Подиум",               category = "Декор",   defaultColor = new Color(0.12f, 0.12f, 0.13f), build = Podium },
-            new Entry { id = "logo_panel",  name = "Панель с логотипом",   category = "Декор",   defaultColor = new Color(0.95f, 0.95f, 0.95f), build = LogoPanel },
-            new Entry { id = "neon_ring",   name = "Неоновое кольцо",      category = "Декор",   defaultColor = new Color(1.00f, 0.25f, 0.60f), build = NeonRing },
-            new Entry { id = "floor_lamp",  name = "Торшер",               category = "Декор",   defaultColor = new Color(1.00f, 0.80f, 0.55f), build = FloorLamp },
-            new Entry { id = "led_wall",    name = "LED-экран 4×2.25 м",   category = "Техника", defaultColor = new Color(0.30f, 0.55f, 0.90f), build = LedWall },
-            new Entry { id = "tv_stand",    name = "Монитор на стойке",    category = "Техника", defaultColor = new Color(0.45f, 0.75f, 0.85f), build = TvStand },
-            new Entry { id = "studio_cam",  name = "Камера на штативе",    category = "Техника", defaultColor = new Color(0.08f, 0.08f, 0.09f), build = TripodCamera },
-            new Entry { id = "pedestal_cam",name = "Камера на пьедестале", category = "Техника", defaultColor = new Color(0.75f, 0.76f, 0.78f), build = PedestalCamera },
+            new Entry { id = "table_round", name = "Beistelltisch (wie auf Foto)",   category = "Möbel",  defaultColor = new Color(0.72f, 0.52f, 0.30f), build = RoundTable },
+            new Entry { id = "news_desk",   name = "Moderationstisch",        category = "Möbel",  defaultColor = new Color(0.92f, 0.92f, 0.92f), build = NewsDesk },
+            new Entry { id = "shoji",       name = "Shoji-Paravent",          category = "Deko",   defaultColor = new Color(0.80f, 0.45f, 0.15f), build = Shoji },
+            new Entry { id = "rug",         name = "Teppich rund, uni",    category = "Teppiche", defaultColor = new Color(0.55f, 0.35f, 0.30f), build = Rug },
+            new Entry { id = "rug_border",  name = "Teppich 3×2 m, Bordüre", category = "Teppiche", defaultColor = new Color(0.75f, 0.70f, 0.62f), build = RugBuilder(3f, 2f, "border") },
+            new Entry { id = "rug_stripes", name = "Teppich 2,5×1,6 m, gestreift", category = "Teppiche", defaultColor = new Color(0.45f, 0.5f, 0.6f), build = RugBuilder(2.5f, 1.6f, "stripes") },
+            new Entry { id = "rug_persian", name = "Perserteppich 3×2 m",   category = "Teppiche", defaultColor = Color.white, build = RugBuilder(3f, 2f, "persian") },
+            new Entry { id = "rug_runner",  name = "Läufer 3×0,8 m",        category = "Teppiche", defaultColor = new Color(0.3f, 0.3f, 0.32f), build = RugBuilder(3f, 0.8f, "border") },
+
+            new Entry { id = "person_stand",   name = "Person stehend",       category = "Personen", defaultColor = new Color(0.25f, 0.27f, 0.3f), build = PersonBuilder(Pose.Stand) },
+            new Entry { id = "person_walk",    name = "Person gehend",        category = "Personen", defaultColor = new Color(0.55f, 0.6f, 0.7f), build = PersonBuilder(Pose.Walk) },
+            new Entry { id = "person_present", name = "Moderator:in mit Mikro", category = "Personen", defaultColor = new Color(0.7f, 0.2f, 0.2f), build = PersonBuilder(Pose.Present) },
+            new Entry { id = "person_sit",     name = "Person sitzend",       category = "Personen", defaultColor = new Color(0.3f, 0.3f, 0.32f), build = PersonBuilder(Pose.Sit) },
+            new Entry { id = "person_sitcross",name = "Gast, Beine überschlagen", category = "Personen", defaultColor = new Color(0.65f, 0.68f, 0.72f), build = PersonBuilder(Pose.SitCross) },
+
+            new Entry { id = "spot_stand",  name = "Scheinwerfer auf Stativ", category = "Licht", defaultColor = new Color(1f, 0.92f, 0.8f), build = SpotOnStand },
+            new Entry { id = "uplight",     name = "Bodenstrahler",         category = "Licht", defaultColor = new Color(0.3f, 0.4f, 1f), build = FloorUplight },
+            new Entry { id = "led_tube",    name = "LED-Röhre stehend",     category = "Licht", defaultColor = new Color(1f, 0.85f, 0.7f), build = LedTubeStand },
+            new Entry { id = "led_tube_floor", name = "LED-Röhre am Boden",  category = "Licht", defaultColor = new Color(0.4f, 0.5f, 1f), build = LedTubeFloor },
+            new Entry { id = "podium",      name = "Podest",               category = "Deko",   defaultColor = new Color(0.12f, 0.12f, 0.13f), build = Podium },
+            new Entry { id = "logo_panel",  name = "Logowand",   category = "Deko",   defaultColor = new Color(0.95f, 0.95f, 0.95f), build = LogoPanel },
+            new Entry { id = "neon_ring",   name = "Neonring",      category = "Deko",   defaultColor = new Color(1.00f, 0.25f, 0.60f), build = NeonRing },
+            new Entry { id = "floor_lamp",  name = "Stehlampe",               category = "Licht",   defaultColor = new Color(1.00f, 0.80f, 0.55f), build = FloorLamp },
+            new Entry { id = "led_wall",    name = "LED-Wand 4×2,25 m",   category = "Technik", defaultColor = new Color(0.30f, 0.55f, 0.90f), build = LedWall },
+            new Entry { id = "tv_stand",    name = "Monitor auf Rollständer",    category = "Technik", defaultColor = new Color(0.45f, 0.75f, 0.85f), build = TvStand },
+            new Entry { id = "studio_cam",  name = "Kamera auf Stativ",    category = "Technik", defaultColor = new Color(0.08f, 0.08f, 0.09f), build = TripodCamera },
+            new Entry { id = "pedestal_cam",name = "Kamera auf Pumpstativ", category = "Technik", defaultColor = new Color(0.75f, 0.76f, 0.78f), build = PedestalCamera },
         };
 
         /// <summary>Старые id из сохранённых проектов → новые.</summary>
@@ -77,7 +92,7 @@ namespace Studio
         public static StudioProp Create(string id, Transform parent, Vector3 pos, float rotY, Color? color = null)
         {
             var e = Find(id);
-            if (e == null) { Debug.LogWarning("Неизвестный объект: " + id); return null; }
+            if (e == null) { Debug.LogWarning("Unbekanntes Objekt: " + id); return null; }
             var root = new GameObject(e.name);
             root.transform.SetParent(parent, false);
             var prop = root.AddComponent<StudioProp>();
@@ -93,6 +108,8 @@ namespace Studio
             }
             if (built && c != Color.white) prop.SetColor(c);
             prop.color = c;
+            var cam = root.GetComponent<StudioCam>();
+            if (cam != null) cam.SetNumber(parent.GetComponentsInChildren<StudioCam>(true).Length);
             Geo.FitCollider(root);
             root.transform.localPosition = pos;
             root.transform.localRotation = Quaternion.Euler(0, rotY, 0);
@@ -136,6 +153,245 @@ namespace Studio
             _screenTex.SetPixels(px);
             _screenTex.Apply(true);
             return _screenTex;
+        }
+
+        // ================= Personen (stilisierte Figuren) =================
+
+        enum Pose { Stand, Walk, Present, Sit, SitCross }
+
+        static Material Skin => M.Get("Skin", new Color(0.80f, 0.64f, 0.54f), 0.35f);
+        static Material Hair => M.Get("Hair", new Color(0.2f, 0.15f, 0.11f), 0.25f);
+        static Material Pants => M.Get("Pants", new Color(0.13f, 0.16f, 0.24f), 0.15f);
+        static Material Shoes => M.Get("Shoes", new Color(0.88f, 0.88f, 0.86f), 0.3f);
+
+        static Func<Transform, StudioProp, Color, GameObject> PersonBuilder(Pose pose) => (r, p, c) => Person(r, p, c, pose);
+
+        static GameObject Person(Transform r, StudioProp p, Color c, Pose pose)
+        {
+            var shirt = Tint(p, "Shirt", c, 0.1f);
+            // Gelenke; Blickrichtung +Z, rechte Seite = +X
+            Vector3 pelvis = new Vector3(0, 0.95f, 0), neck = new Vector3(0, 1.48f, 0), head = new Vector3(0, 1.63f, 0.01f);
+            Vector3 hipL = new Vector3(-0.1f, 0.93f, 0), hipR = new Vector3(0.1f, 0.93f, 0);
+            Vector3 kneeL = new Vector3(-0.1f, 0.5f, 0.02f), kneeR = new Vector3(0.1f, 0.5f, 0.02f);
+            Vector3 ankleL = new Vector3(-0.1f, 0.08f, 0), ankleR = new Vector3(0.1f, 0.08f, 0);
+            Vector3 shL = new Vector3(-0.19f, 1.44f, 0), shR = new Vector3(0.19f, 1.44f, 0);
+            Vector3 elL = new Vector3(-0.24f, 1.16f, 0), elR = new Vector3(0.24f, 1.16f, 0);
+            Vector3 wrL = new Vector3(-0.25f, 0.9f, 0.04f), wrR = new Vector3(0.25f, 0.9f, 0.04f);
+            bool mic = false;
+
+            switch (pose)
+            {
+                case Pose.Walk:
+                    kneeL = new Vector3(-0.1f, 0.5f, 0.13f); ankleL = new Vector3(-0.1f, 0.08f, 0.26f);
+                    kneeR = new Vector3(0.1f, 0.5f, -0.06f); ankleR = new Vector3(0.1f, 0.12f, -0.24f);
+                    elL = new Vector3(-0.24f, 1.17f, -0.08f); wrL = new Vector3(-0.25f, 0.93f, -0.15f);
+                    elR = new Vector3(0.24f, 1.17f, 0.08f); wrR = new Vector3(0.25f, 0.93f, 0.17f);
+                    break;
+                case Pose.Present:
+                    elR = new Vector3(0.22f, 1.18f, 0.12f); wrR = new Vector3(0.12f, 1.36f, 0.22f);
+                    elL = new Vector3(-0.26f, 1.15f, 0.06f); wrL = new Vector3(-0.3f, 1.06f, 0.3f);
+                    mic = true;
+                    break;
+                case Pose.Sit:
+                case Pose.SitCross:
+                    pelvis = new Vector3(0, 0.52f, -0.05f); neck = new Vector3(0, 1.03f, -0.13f); head = new Vector3(0, 1.18f, -0.11f);
+                    hipL = new Vector3(-0.1f, 0.5f, -0.04f); hipR = new Vector3(0.1f, 0.5f, -0.04f);
+                    kneeL = new Vector3(-0.12f, 0.52f, 0.38f); kneeR = new Vector3(0.12f, 0.52f, 0.38f);
+                    ankleL = new Vector3(-0.12f, 0.08f, 0.42f); ankleR = new Vector3(0.12f, 0.08f, 0.42f);
+                    shL = new Vector3(-0.19f, 0.99f, -0.12f); shR = new Vector3(0.19f, 0.99f, -0.12f);
+                    elL = new Vector3(-0.22f, 0.74f, 0.0f); elR = new Vector3(0.22f, 0.74f, 0.0f);
+                    wrL = new Vector3(-0.14f, 0.6f, 0.28f); wrR = new Vector3(0.14f, 0.6f, 0.28f);
+                    if (pose == Pose.SitCross)
+                    {
+                        // wie der Gast auf dem Sucherfoto: Bein überschlagen, Hände hinter dem Kopf
+                        kneeR = new Vector3(0.0f, 0.66f, 0.36f); ankleR = new Vector3(-0.22f, 0.5f, 0.62f);
+                        elL = new Vector3(-0.3f, 1.16f, -0.08f); wrL = new Vector3(-0.07f, 1.22f, -0.2f);
+                        elR = new Vector3(0.3f, 1.16f, -0.08f); wrR = new Vector3(0.07f, 1.22f, -0.2f);
+                    }
+                    break;
+            }
+
+            var torsoG = Geo.Group("Torso", r, pelvis).transform;
+            var torso = Geo.Limb("Chest", torsoG, new Vector3(0, 0.1f, 0), neck - pelvis - new Vector3(0, 0.06f, 0), 0.14f, shirt);
+            torso.transform.localScale = Vector3.Scale(torso.transform.localScale, new Vector3(1.35f, 1f, 0.8f));
+            Geo.Limb("Hips", r, hipL + new Vector3(0, 0.03f, 0), hipR + new Vector3(0, 0.03f, 0), 0.11f, Pants);
+            Geo.Limb("Neck", r, neck - new Vector3(0, 0.06f, 0), head - new Vector3(0, 0.08f, 0), 0.05f, Skin);
+
+            Geo.Limb("ThighL", r, hipL, kneeL, 0.075f, Pants); Geo.Limb("ShinL", r, kneeL, ankleL, 0.06f, Pants);
+            Geo.Limb("ThighR", r, hipR, kneeR, 0.075f, Pants); Geo.Limb("ShinR", r, kneeR, ankleR, 0.06f, Pants);
+            Foot(r, ankleL, kneeL); Foot(r, ankleR, kneeR);
+
+            Geo.Limb("UpperArmL", r, shL, elL, 0.055f, shirt); Geo.Limb("ForearmL", r, elL, wrL, 0.043f, Skin);
+            Geo.Limb("UpperArmR", r, shR, elR, 0.055f, shirt); Geo.Limb("ForearmR", r, elR, wrR, 0.043f, Skin);
+            Geo.Sphere("HandL", r, wrL + (wrL - elL).normalized * 0.05f, 0.045f, Skin);
+            Geo.Sphere("HandR", r, wrR + (wrR - elR).normalized * 0.05f, 0.045f, Skin);
+            if (mic)
+            {
+                var top = wrR + (wrR - elR).normalized * 0.06f;
+                Geo.Limb("Mic", r, top - new Vector3(0, 0.08f, 0), top + new Vector3(0, 0.08f, 0.02f), 0.018f, M.MetalBlack);
+                Geo.Sphere("MicHead", r, top + new Vector3(0, 0.11f, 0.02f), 0.028f, M.MetalGrey);
+            }
+
+            var headG = Geo.Group("Head", r, head).transform;
+            var skull = Geo.Sphere("Skull", headG, Vector3.zero, 0.105f, Skin);
+            skull.transform.localScale = new Vector3(0.2f, 0.24f, 0.22f);
+            var hair = Geo.Sphere("Hair", headG, new Vector3(0, 0.035f, -0.015f), 0.11f, Hair);
+            hair.transform.localScale = new Vector3(0.215f, 0.19f, 0.23f);
+            Geo.Box("Nose", headG, new Vector3(0, -0.01f, 0.105f), new Vector3(0.025f, 0.04f, 0.03f), Skin);
+
+            var idle = r.gameObject.AddComponent<PersonIdle>();
+            idle.head = headG;
+            idle.torso = torsoG;
+            return r.gameObject;
+        }
+
+        static void Foot(Transform r, Vector3 ankle, Vector3 knee)
+        {
+            var fwd = Vector3.ProjectOnPlane(ankle - knee, Vector3.up);
+            if (fwd.sqrMagnitude < 1e-4f || Vector3.Dot(fwd, Vector3.forward) < 0.2f) fwd = Vector3.forward;
+            fwd.Normalize();
+            var foot = Geo.Box("Shoe", r, ankle + fwd * 0.06f - new Vector3(0, 0.035f, 0), new Vector3(0.09f, 0.07f, 0.24f), Shoes);
+            foot.transform.localRotation = Quaternion.LookRotation(fwd, Vector3.up);
+        }
+
+        // ================= Teppiche =================
+
+        static Func<Transform, StudioProp, Color, GameObject> RugBuilder(float w, float d, string kind)
+            => (r, p, c) =>
+            {
+                var m = Tint(p, "Rug", c, 0.02f);
+                m.mainTexture = M.RugTexture(kind);
+                Geo.Box("Rug", r, new Vector3(0, 0.006f, 0), new Vector3(w, 0.012f, d), m);
+                return r.gameObject;
+            };
+
+        // ================= Licht am Boden =================
+
+        static Material Emitter(StudioProp p, string name, Color c, float k)
+        {
+            var m = M.Unique(name, c, 0.6f);
+            m.EnableKeyword("_EMISSION");
+            m.SetColor("_EmissionColor", c * k);
+            p.tintMaterials.Add(m);
+            p.tintIsEmission = true;
+            return m;
+        }
+
+        static Light PointLight(Transform parent, Vector3 pos, Color c, float range, float intensity)
+        {
+            var l = new GameObject("Light").AddComponent<Light>();
+            l.transform.SetParent(parent, false);
+            l.transform.localPosition = pos;
+            l.type = LightType.Point;
+            l.range = range;
+            l.intensity = intensity;
+            l.color = c;
+            return l;
+        }
+
+        /// <summary>Stehende LED-Röhre (z. B. Astera-Titan-Stil) auf Bodenplatte.</summary>
+        static GameObject LedTubeStand(Transform r, StudioProp p, Color c)
+        {
+            var tube = Emitter(p, "LedTube", c, 2.5f);
+            Geo.Cyl("Base", r, new Vector3(0, 0.012f, 0), 0.13f, 0.024f, M.MetalBlack);
+            Geo.Cyl("Holder", r, new Vector3(0, 0.08f, 0), 0.03f, 0.12f, M.MetalBlack);
+            Geo.Cyl("Tube", r, new Vector3(0, 0.79f, 0), 0.025f, 1.3f, tube);
+            Geo.Cyl("CapTop", r, new Vector3(0, 1.45f, 0), 0.028f, 0.03f, M.MetalBlack);
+            PointLight(r, new Vector3(0, 0.6f, 0.08f), c, 3.5f, 1.0f);
+            PointLight(r, new Vector3(0, 1.2f, 0.08f), c, 3.5f, 1.0f);
+            return r.gameObject;
+        }
+
+        /// <summary>Liegende LED-Röhre am Boden (Akzentlicht für Wand/Vorhang).</summary>
+        static GameObject LedTubeFloor(Transform r, StudioProp p, Color c)
+        {
+            var tube = Emitter(p, "LedTubeFloor", c, 2.5f);
+            Geo.Cyl("Tube", r, new Vector3(0, 0.06f, 0), 0.025f, 1.6f, tube, new Vector3(0, 0, 90));
+            Geo.Box("FootL", r, new Vector3(-0.6f, 0.02f, 0), new Vector3(0.04f, 0.04f, 0.12f), M.MetalBlack);
+            Geo.Box("FootR", r, new Vector3(0.6f, 0.02f, 0), new Vector3(0.04f, 0.04f, 0.12f), M.MetalBlack);
+            PointLight(r, new Vector3(-0.4f, 0.2f, 0.1f), c, 3f, 1.0f);
+            PointLight(r, new Vector3(0.4f, 0.2f, 0.1f), c, 3f, 1.0f);
+            return r.gameObject;
+        }
+
+        /// <summary>Stufenlinsen-Scheinwerfer mit Torblende — Kopf entlang +Z.</summary>
+        static Light SpotHead(Transform head, Material lens, float rad, float len)
+        {
+            Geo.Cyl("Housing", head, Vector3.zero, rad, len, M.MetalBlack, new Vector3(90, 0, 0));
+            Geo.Cyl("Lens", head, new Vector3(0, 0, len / 2 + 0.005f), rad * 0.85f, 0.01f, lens, new Vector3(90, 0, 0));
+            Geo.Cyl("Back", head, new Vector3(0, 0, -len / 2 - 0.02f), rad * 0.9f, 0.04f, M.MetalBlack, new Vector3(90, 0, 0));
+            float d = rad + 0.02f, l = rad * 1.3f;
+            Geo.Box("DoorT", head, new Vector3(0, d + 0.03f, len / 2 + l * 0.45f), new Vector3(rad * 2, 0.005f, l), M.MetalBlack, new Vector3(-30, 0, 0));
+            Geo.Box("DoorB", head, new Vector3(0, -d - 0.03f, len / 2 + l * 0.45f), new Vector3(rad * 2, 0.005f, l), M.MetalBlack, new Vector3(30, 0, 0));
+            Geo.Box("DoorL", head, new Vector3(-d - 0.03f, 0, len / 2 + l * 0.45f), new Vector3(0.005f, rad * 1.6f, l), M.MetalBlack, new Vector3(0, 30, 0));
+            Geo.Box("DoorR", head, new Vector3(d + 0.03f, 0, len / 2 + l * 0.45f), new Vector3(0.005f, rad * 1.6f, l), M.MetalBlack, new Vector3(0, -30, 0));
+            Geo.Cyl("FocusKnob", head, new Vector3(0, -rad - 0.02f, -len / 4), 0.02f, 0.04f, M.MetalBlack);
+            var l2 = new GameObject("Light").AddComponent<Light>();
+            l2.transform.SetParent(head, false);
+            l2.transform.localPosition = new Vector3(0, 0, len / 2 + 0.03f);
+            l2.type = LightType.Spot;
+            l2.spotAngle = 34;
+            l2.innerSpotAngle = 14;
+            l2.range = 15f;
+            l2.shadows = LightShadows.Soft;
+            return l2;
+        }
+
+        /// <summary>Scheinwerfer auf Lampenstativ (wie auf dem Referenzbild: schwarzer Fresnel mit Torblende).</summary>
+        static GameObject SpotOnStand(Transform r, StudioProp p, Color c)
+        {
+            var lens = Emitter(p, "SpotLens", c, 2f);
+            const float top = 1.85f;
+            for (int i = 0; i < 3; i++)
+            {
+                float a = Mathf.PI / 2 + i * Mathf.PI * 2 / 3;
+                var foot = new Vector3(Mathf.Cos(a), 0.01f, Mathf.Sin(a)) * 0.5f;
+                foot.y = 0.01f;
+                Geo.Rod("Leg", r, new Vector3(0, 0.75f, 0), foot, 0.012f, M.MetalBlack);
+                Geo.Rod("Brace", r, new Vector3(0, 0.45f, 0), foot * 0.55f + Vector3.up * 0.3f, 0.007f, M.MetalBlack);
+            }
+            Geo.Rod("Pole", r, new Vector3(0, 0.45f, 0), new Vector3(0, top, 0), 0.016f, M.MetalBlack);
+            Geo.Cyl("Collar", r, new Vector3(0, 1.2f, 0), 0.025f, 0.05f, M.MetalBlack);
+
+            var al = r.gameObject.AddComponent<AimableLight>();
+            al.panPivot = Geo.Group("PanPivot", r, new Vector3(0, top, 0)).transform;
+            Geo.Rod("YokeL", al.panPivot, new Vector3(-0.17f, 0, 0), new Vector3(-0.17f, 0.22f, 0), 0.012f, M.MetalBlack);
+            Geo.Rod("YokeR", al.panPivot, new Vector3(0.17f, 0, 0), new Vector3(0.17f, 0.22f, 0), 0.012f, M.MetalBlack);
+            Geo.Rod("YokeB", al.panPivot, new Vector3(-0.17f, 0, 0), new Vector3(0.17f, 0, 0), 0.012f, M.MetalBlack);
+            Geo.Cyl("YokeKnob", al.panPivot, new Vector3(0.19f, 0.22f, 0), 0.025f, 0.03f, M.MetalBlack, new Vector3(0, 0, 90));
+            al.tiltPivot = Geo.Group("TiltPivot", al.panPivot, new Vector3(0, 0.22f, 0)).transform;
+            al.lightSource = SpotHead(al.tiltPivot, lens, 0.15f, 0.3f);
+            al.lightSource.color = c;
+            al.lensMat = lens;
+            al.tilt = -15f; al.intensity = 1.8f;
+            al.Apply();
+            return r.gameObject;
+        }
+
+        /// <summary>Bodenstrahler (PAR) auf Bodenplatte — für Wand- und Vorhangakzente.</summary>
+        static GameObject FloorUplight(Transform r, StudioProp p, Color c)
+        {
+            var lens = Emitter(p, "ParLens", c, 2f);
+            Geo.Box("Plate", r, new Vector3(0, 0.01f, 0), new Vector3(0.3f, 0.02f, 0.3f), M.MetalBlack);
+            var al = r.gameObject.AddComponent<AimableLight>();
+            al.minTilt = -10f; al.maxTilt = 90f;
+            al.panPivot = Geo.Group("PanPivot", r, new Vector3(0, 0.02f, 0)).transform;
+            Geo.Rod("YokeL", al.panPivot, new Vector3(-0.13f, 0, 0), new Vector3(-0.13f, 0.16f, 0), 0.01f, M.MetalBlack);
+            Geo.Rod("YokeR", al.panPivot, new Vector3(0.13f, 0, 0), new Vector3(0.13f, 0.16f, 0), 0.01f, M.MetalBlack);
+            al.tiltPivot = Geo.Group("TiltPivot", al.panPivot, new Vector3(0, 0.16f, 0)).transform;
+            Geo.Cyl("Can", al.tiltPivot, Vector3.zero, 0.11f, 0.24f, M.MetalBlack, new Vector3(90, 0, 0));
+            Geo.Cyl("Lens", al.tiltPivot, new Vector3(0, 0, 0.122f), 0.095f, 0.01f, lens, new Vector3(90, 0, 0));
+            var l = new GameObject("Light").AddComponent<Light>();
+            l.transform.SetParent(al.tiltPivot, false);
+            l.transform.localPosition = new Vector3(0, 0, 0.14f);
+            l.type = LightType.Spot;
+            l.spotAngle = 40; l.innerSpotAngle = 15; l.range = 8f;
+            l.color = c;
+            al.lightSource = l;
+            al.lensMat = lens;
+            al.tilt = 55f; al.intensity = 1.5f;
+            al.Apply();
+            return r.gameObject;
         }
 
         // ================= Мебель =================
@@ -365,33 +621,120 @@ namespace Studio
             return r.gameObject;
         }
 
-        static void CameraHead(Transform r, float y, StudioProp p)
+        // ===== Studiokamera wie im Studio: Blackmagic URSA Broadcast + Fujinon-Zoom, Manfrotto-Stativ mit Spinne =====
+
+        static Material CableBlue => M.Get("CableBlue", new Color(0.1f, 0.35f, 0.85f), 0.5f);
+        static Material MonitorBlue => M.Get("MonitorBlue", new Color(0.12f, 0.16f, 0.32f), 0.4f, 0.2f);
+        static Material DarkGrey => M.Get("CamDarkGrey", new Color(0.13f, 0.13f, 0.14f), 0.35f, 0.3f);
+
+        /// <summary>Schwenkkopf + Kamera + Objektiv + Sucher-Monitor. Gibt StudioCam zurück.</summary>
+        static StudioCam CameraHead(Transform r, StudioProp p, float height, float minH, float maxH)
         {
-            var head = Geo.Group("Head", r, new Vector3(0, y, 0)).transform;
-            Geo.Box("PanHead", head, new Vector3(0, 0.06f, 0), new Vector3(0.2f, 0.12f, 0.2f), M.MetalBlack);
-            Geo.Box("Body", head, new Vector3(0, 0.24f, -0.05f), new Vector3(0.18f, 0.22f, 0.42f), M.MetalBlack);
-            Geo.Cyl("Lens", head, new Vector3(0, 0.24f, 0.3f), 0.065f, 0.34f, M.MetalBlack, new Vector3(90, 0, 0));
-            Geo.Cyl("LensFront", head, new Vector3(0, 0.24f, 0.475f), 0.055f, 0.01f, M.Glass, new Vector3(90, 0, 0));
-            Geo.Box("Viewfinder", head, new Vector3(0, 0.42f, -0.12f), new Vector3(0.22f, 0.15f, 0.12f), M.MetalBlack);
-            Geo.Box("Tally", head, new Vector3(0, 0.51f, -0.1f), new Vector3(0.04f, 0.02f, 0.02f), M.Emissive("Tally", Color.red, 3f));
-            Geo.Rod("PanBarL", head, new Vector3(-0.1f, 0.08f, -0.1f), new Vector3(-0.3f, -0.05f, -0.6f), 0.012f, M.MetalBlack);
-            Geo.Rod("PanBarR", head, new Vector3(0.1f, 0.08f, -0.1f), new Vector3(0.3f, -0.05f, -0.6f), 0.012f, M.MetalBlack);
+            var cam = r.gameObject.AddComponent<StudioCam>();
+            cam.height = height; cam.minHeight = minH; cam.maxHeight = maxH;
+
+            var pan = Geo.Group("PanPivot", r, new Vector3(0, height, 0)).transform;
+            cam.panPivot = pan;
+            // Fluidkopf (Manfrotto) mit rotem Logo
+            Geo.Cyl("HeadBase", pan, new Vector3(0, 0.02f, 0), 0.06f, 0.04f, M.MetalBlack);
+            Geo.Box("FluidHead", pan, new Vector3(0, 0.08f, 0), new Vector3(0.13f, 0.1f, 0.15f), M.MetalBlack);
+            Geo.Cyl("Logo", pan, new Vector3(0.066f, 0.085f, 0), 0.015f, 0.004f, M.RedBox, new Vector3(0, 0, 90));
+
+            var tilt = Geo.Group("TiltPivot", pan, new Vector3(0, 0.14f, 0)).transform;
+            cam.tiltPivot = tilt;
+            Geo.Box("Plate", tilt, new Vector3(0, 0.005f, 0.02f), new Vector3(0.14f, 0.015f, 0.3f), DarkGrey);
+
+            // Kamerakörper
+            Geo.Box("Body", tilt, new Vector3(0, 0.115f, 0.0f), new Vector3(0.15f, 0.19f, 0.3f), M.MetalBlack);
+            Geo.Box("Battery", tilt, new Vector3(0, 0.115f, -0.175f), new Vector3(0.13f, 0.17f, 0.05f), DarkGrey);
+            Geo.Box("SidePanel", tilt, new Vector3(-0.077f, 0.12f, -0.03f), new Vector3(0.006f, 0.09f, 0.12f), DarkGrey);
+            Geo.Box("SideButtons", tilt, new Vector3(0.077f, 0.08f, 0.05f), new Vector3(0.006f, 0.05f, 0.1f), DarkGrey);
+            for (int i = 0; i < 4; i++)
+                Geo.Cyl("SDI", tilt, new Vector3(-0.08f, 0.06f + i * 0.03f, -0.12f), 0.008f, 0.02f, M.MetalGrey, new Vector3(0, 0, 90));
+
+            // Fujinon-Broadcastzoom mit Servogriff
+            Geo.Cyl("LensMount", tilt, new Vector3(0, 0.1f, 0.165f), 0.05f, 0.03f, M.MetalBlack, new Vector3(90, 0, 0));
+            Geo.Cyl("LensBarrel", tilt, new Vector3(0, 0.1f, 0.27f), 0.046f, 0.2f, M.MetalBlack, new Vector3(90, 0, 0));
+            Geo.Cyl("ZoomRing", tilt, new Vector3(0, 0.1f, 0.25f), 0.049f, 0.04f, DarkGrey, new Vector3(90, 0, 0));
+            Geo.Cyl("LensFront", tilt, new Vector3(0, 0.1f, 0.4f), 0.062f, 0.08f, M.MetalBlack, new Vector3(90, 0, 0));
+            Geo.Cyl("FrontGlass", tilt, new Vector3(0, 0.1f, 0.441f), 0.052f, 0.004f, M.Glass, new Vector3(90, 0, 0));
+            Geo.Box("ServoGrip", tilt, new Vector3(0.075f, 0.075f, 0.27f), new Vector3(0.055f, 0.11f, 0.15f), M.MetalBlack);
+            Geo.Box("FujinonPlate", tilt, new Vector3(0.103f, 0.09f, 0.27f), new Vector3(0.004f, 0.025f, 0.08f), M.MetalGrey);
+            Geo.Box("ZoomRocker", tilt, new Vector3(0.1f, 0.12f, 0.24f), new Vector3(0.012f, 0.02f, 0.04f), DarkGrey);
+
+            // Tragegriff + Tally
+            Geo.Box("HandleRail", tilt, new Vector3(0, 0.26f, -0.01f), new Vector3(0.03f, 0.025f, 0.26f), M.MetalBlack);
+            Geo.Box("HandlePostF", tilt, new Vector3(0, 0.225f, 0.1f), new Vector3(0.025f, 0.05f, 0.025f), M.MetalBlack);
+            Geo.Box("HandlePostB", tilt, new Vector3(0, 0.225f, -0.1f), new Vector3(0.025f, 0.05f, 0.025f), M.MetalBlack);
+            cam.tallyMat = M.Unique("Tally", new Color(0.8f, 0.05f, 0.05f), 0.5f);
+            cam.tallyMat.EnableKeyword("_EMISSION");
+            Geo.Box("Tally", tilt, new Vector3(0, 0.278f, 0.1f), new Vector3(0.05f, 0.012f, 0.02f), cam.tallyMat);
+            cam.SetLive(false);
+
+            // Sucher-Monitor (7") am Arm, links oben, mit Sonnenblende
+            Geo.Rod("MonArm1", tilt, new Vector3(-0.02f, 0.27f, 0.02f), new Vector3(-0.13f, 0.36f, 0.0f), 0.012f, M.MetalBlack);
+            Geo.Rod("MonArm2", tilt, new Vector3(-0.13f, 0.36f, 0.0f), new Vector3(-0.2f, 0.38f, -0.03f), 0.012f, M.Get("ArmGreen", new Color(0.15f, 0.45f, 0.3f), 0.4f, 0.4f));
+            var mon = Geo.Group("Viewfinder", tilt, new Vector3(-0.22f, 0.4f, -0.05f), 0).transform;
+            mon.localRotation = Quaternion.Euler(-8, -15, 0);
+            Geo.Box("MonBody", mon, Vector3.zero, new Vector3(0.2f, 0.14f, 0.045f), MonitorBlue);
+            Geo.Quad("MonScreen", mon, new Vector3(0, 0, -0.024f), new Vector2(0.17f, 0.11f), M.Emissive("VfScreen", new Color(0.35f, 0.4f, 0.6f), 0.8f), Vector3.zero);
+            Geo.Box("HoodT", mon, new Vector3(0, 0.075f, -0.06f), new Vector3(0.2f, 0.006f, 0.08f), M.MetalBlack);
+            Geo.Box("HoodL", mon, new Vector3(-0.1f, 0, -0.06f), new Vector3(0.006f, 0.14f, 0.08f), M.MetalBlack);
+            Geo.Box("HoodR", mon, new Vector3(0.1f, 0, -0.06f), new Vector3(0.006f, 0.14f, 0.08f), M.MetalBlack);
+            for (int i = 0; i < 4; i++)
+                Geo.Cyl("Knob", mon, new Vector3(0.105f, -0.045f + i * 0.03f, 0.0f), 0.008f, 0.012f, DarkGrey, new Vector3(0, 0, 90));
+
+            // Schwenkarme: links mit Zoom-Fernbedienung, rechts mit Fokus
+            Geo.Rod("PanBarL", tilt, new Vector3(-0.06f, 0.02f, -0.1f), new Vector3(-0.24f, -0.06f, -0.62f), 0.013f, M.MetalBlack);
+            Geo.Cyl("ZoomDemand", tilt, new Vector3(-0.25f, -0.065f, -0.66f), 0.025f, 0.13f, M.Rubber, new Vector3(80, -20, 0));
+            Geo.Box("ZoomDemandBox", tilt, new Vector3(-0.22f, -0.04f, -0.56f), new Vector3(0.05f, 0.06f, 0.09f), M.MetalBlack);
+            Geo.Rod("PanBarR", tilt, new Vector3(0.06f, 0.02f, -0.1f), new Vector3(0.22f, -0.06f, -0.58f), 0.013f, M.MetalBlack);
+            Geo.Cyl("FocusDemand", tilt, new Vector3(0.23f, -0.06f, -0.6f), 0.03f, 0.06f, M.Rubber, new Vector3(0, 0, 90));
+
+            // blaue SDI-Kabel hinten herunter
+            Geo.Rod("Cable1", tilt, new Vector3(-0.08f, 0.08f, -0.13f), new Vector3(-0.1f, -0.15f, -0.2f), 0.007f, CableBlue);
+            Geo.Rod("Cable2", tilt, new Vector3(-0.08f, 0.11f, -0.13f), new Vector3(-0.08f, -0.15f, -0.18f), 0.007f, CableBlue);
+            Geo.Rod("Cable3", tilt, new Vector3(0.03f, 0.27f, 0.02f), new Vector3(-0.2f, 0.38f, -0.05f), 0.005f, M.Rubber);
+
+            // Kameranummer an beiden Seiten
+            var tags = new System.Collections.Generic.List<Renderer>();
+            tags.Add(Geo.Quad("NumberL", tilt, new Vector3(-0.0761f, 0.17f, 0.06f), new Vector2(0.07f, 0.05f), M.NumberTag(1), new Vector3(0, 90, 0)).GetComponent<Renderer>());
+            tags.Add(Geo.Quad("NumberR", tilt, new Vector3(0.0761f, 0.17f, 0.06f), new Vector2(0.07f, 0.05f), M.NumberTag(1), new Vector3(0, -90, 0)).GetComponent<Renderer>());
+            cam.numberTags = tags.ToArray();
+
+            var eye = Geo.Group("Eye", tilt, new Vector3(0, 0.1f, 0.46f)).transform;
+            cam.eye = eye;
+            return cam;
         }
 
         static GameObject TripodCamera(Transform r, StudioProp p, Color c)
         {
             var legs = Tint(p, "TripodLegs", c, 0.4f);
-            const float top = 1.25f;
+            const float bowlY = 1.02f, footR = 0.5f, armY = 0.14f;
+            // Bodenspinne mit Rollen
+            Geo.Cyl("DollyHub", r, new Vector3(0, armY, 0), 0.07f, 0.05f, M.MetalBlack);
             for (int i = 0; i < 3; i++)
             {
-                float a = i * Mathf.PI * 2 / 3 + Mathf.PI / 2;
-                var foot = new Vector3(Mathf.Cos(a), 0.12f, Mathf.Sin(a)) * 0.55f;
-                foot.y = 0.12f;
-                Geo.Rod("Leg", r, new Vector3(0, top, 0), foot, 0.016f, legs);
-                Geo.Rod("Spreader", r, foot, Vector3.up * 0.12f, 0.01f, M.MetalBlack);
-                Geo.Cyl("Wheel", r, foot - Vector3.up * 0.07f, 0.05f, 0.03f, M.Rubber, new Vector3(0, 0, 90));
+                float a = Mathf.PI / 2 + i * Mathf.PI * 2 / 3; // ein Bein nach vorn (+Z)
+                var dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
+                var foot = dir * footR + Vector3.up * armY;
+                Geo.Rod("DollyArm", r, dir * 0.06f + Vector3.up * armY, foot + dir * 0.06f, 0.018f, M.MetalBlack);
+                Geo.Box("CasterFork", r, foot + dir * 0.06f - Vector3.up * 0.05f, new Vector3(0.03f, 0.08f, 0.03f), M.MetalGrey);
+                Geo.Cyl("Caster", r, foot + dir * 0.06f - Vector3.up * 0.09f, 0.045f, 0.025f, M.Rubber, new Vector3(0, 0, 90));
+                // Doppelrohr-Bein mit Mittelklemme
+                var top = dir * 0.07f + Vector3.up * bowlY;
+                var side = Vector3.Cross(Vector3.up, dir).normalized * 0.022f;
+                Geo.Rod("LegA", r, top + side, foot + side * 0.6f + Vector3.up * 0.03f, 0.011f, legs);
+                Geo.Rod("LegB", r, top - side, foot - side * 0.6f + Vector3.up * 0.03f, 0.011f, legs);
+                var mid = Vector3.Lerp(top, foot, 0.45f);
+                Geo.Box("LegClamp", r, mid, new Vector3(0.07f, 0.04f, 0.07f), M.MetalBlack);
+                var low = Vector3.Lerp(top, foot, 0.75f);
+                Geo.Box("LegLock", r, low, new Vector3(0.06f, 0.05f, 0.06f), M.MetalBlack);
             }
-            CameraHead(r, top, p);
+            Geo.Cyl("Bowl", r, new Vector3(0, bowlY, 0), 0.085f, 0.07f, M.MetalBlack);
+            var cam = CameraHead(r, p, 1.25f, bowlY + 0.03f, 1.6f);
+            cam.SetColumn(Geo.Cyl("Column", r, new Vector3(0, bowlY + 0.1f, 0), 0.03f, 0.2f, M.MetalGrey).transform, bowlY);
+            cam.Apply();
             return r.gameObject;
         }
 
@@ -405,9 +748,10 @@ namespace Studio
                 Geo.Cyl("Wheel", r, new Vector3(Mathf.Cos(a) * 0.38f, 0.05f, Mathf.Sin(a) * 0.38f), 0.05f, 0.04f, M.Rubber, new Vector3(0, 0, 90));
             }
             Geo.Cyl("Column1", r, new Vector3(0, 0.5f, 0), 0.16f, 0.65f, body);
-            Geo.Cyl("Column2", r, new Vector3(0, 1.0f, 0), 0.12f, 0.45f, body);
-            Geo.Cyl("SteeringRing", r, new Vector3(0, 1.1f, 0), 0.3f, 0.025f, M.MetalGrey);
-            CameraHead(r, 1.22f, p);
+            Geo.Cyl("SteeringRing", r, new Vector3(0, 0.85f, 0), 0.3f, 0.025f, M.MetalGrey);
+            var cam = CameraHead(r, p, 1.35f, 1.0f, 1.75f);
+            cam.SetColumn(Geo.Cyl("Column2", r, new Vector3(0, 1.0f, 0), 0.11f, 0.3f, body).transform, 0.82f);
+            cam.Apply();
             return r.gameObject;
         }
 

@@ -8,7 +8,7 @@ namespace Studio
     [Serializable]
     public class ProjectData
     {
-        public string name = "Вариант 1";
+        public string name = "Variante 1";
         public List<PropData> props = new List<PropData>();
         public Color wallColor = new Color(0.93f, 0.93f, 0.92f);
         public string wallImage = "";
@@ -18,6 +18,9 @@ namespace Studio
         public float ambient = 0.16f;
         public bool[] fixtures = new bool[0];
         public bool showEquipment = true;
+        public int liveCamera = 2;
+        public bool programOnMonitor = true;
+        public bool viewfinderOverlay = true;
     }
 
     [Serializable]
@@ -28,5 +31,10 @@ namespace Studio
         public float rotY;
         public Color color;
         public string image = "";
+        // nur für Studiokameras
+        public int camNumber;
+        public float camPan, camTilt, camFocal = 24f, camHeight = 1.3f;
+        // nur für Stativscheinwerfer
+        public float lightPan, lightTilt = -20f, lightIntensity = 1.5f;
     }
 }

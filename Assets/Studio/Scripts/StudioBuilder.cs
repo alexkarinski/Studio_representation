@@ -276,10 +276,22 @@ namespace Studio
             PropFactory.Create("shoji", set, new Vector3(3.6f, 0, 1.0f), -100, new Color(0.45f, 0.42f, 0.40f));
 
             PropFactory.Create("tv_stand", set, new Vector3(5.2f, 0, 1.6f), -120);
-            PropFactory.Create("pedestal_cam", set, new Vector3(-4.0f, 0, 1.0f), 100);
-            PropFactory.Create("studio_cam", set, new Vector3(-4.6f, 0, -1.4f), 80);
-            PropFactory.Create("studio_cam", set, new Vector3(-5.2f, 0, -4.4f), 60);
-            PropFactory.Create("studio_cam", set, new Vector3(-1.0f, 0, 4.4f), 160);
+            // Kameras 1–4, auf die Gesprächsrunde ausgerichtet (Kamera 2 ≈ Sucherfoto aus dem Studio)
+            PlaceCamera("pedestal_cam", new Vector3(-4.0f, 0, 1.0f), 12f);
+            PlaceCamera("studio_cam", new Vector3(-2.8f, 0, -3.6f), 20f);
+            PlaceCamera("studio_cam", new Vector3(-4.6f, 0, -1.4f), 35f);
+            PlaceCamera("studio_cam", new Vector3(-1.0f, 0, 4.4f), 28f);
+        }
+
+        void PlaceCamera(string type, Vector3 pos, float focal)
+        {
+            var look = new Vector3(1.1f, 1.0f, -0.9f);
+            float yaw = Mathf.Atan2(look.x - pos.x, look.z - pos.z) * Mathf.Rad2Deg;
+            var prop = PropFactory.Create(type, set, pos, yaw);
+            var cam = prop != null ? prop.GetComponent<StudioCam>() : null;
+            if (cam == null) return;
+            cam.focal = focal;
+            cam.AimAt(look);
         }
 
         void SetupEnvironment()

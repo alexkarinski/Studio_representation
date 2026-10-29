@@ -44,6 +44,16 @@ namespace Studio
         public static GameObject Sphere(string name, Transform parent, Vector3 pos, float radius, Material mat)
             => Prim(PrimitiveType.Sphere, name, parent, pos, Vector3.one * radius * 2, mat, Quaternion.identity);
 
+        /// <summary>Kapsel zwischen zwei Punkten (Gliedmaßen der Personen).</summary>
+        public static GameObject Limb(string name, Transform parent, Vector3 a, Vector3 b, float radius, Material mat)
+        {
+            var dir = b - a;
+            float len = dir.magnitude;
+            return Prim(PrimitiveType.Capsule, name, parent, (a + b) * 0.5f,
+                new Vector3(radius * 2, (len + radius * 2) * 0.5f, radius * 2), mat,
+                len > 1e-4f ? Quaternion.FromToRotation(Vector3.up, dir / len) : Quaternion.identity);
+        }
+
         public static GameObject Quad(string name, Transform parent, Vector3 pos, Vector2 size, Material mat, Vector3 euler)
             => Prim(PrimitiveType.Quad, name, parent, pos, new Vector3(size.x, size.y, 1), mat, Quaternion.Euler(euler));
 

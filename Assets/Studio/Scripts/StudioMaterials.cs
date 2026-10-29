@@ -127,6 +127,63 @@ namespace Studio
             return _shoji;
         }
 
+        static readonly Dictionary<string, Texture2D> RugTex = new Dictionary<string, Texture2D>();
+
+        /// <summary>
+        /// Teppichmuster. Helle Muster (border/stripes/plain) werden per Farbe getönt;
+        /// "persian" hat eigene Farben (Tönung Weiß = Original).
+        /// </summary>
+        public static Texture2D RugTexture(string kind)
+        {
+            if (RugTex.TryGetValue(kind, out var t) && t != null) return t;
+            const int w = 512, h = 512;
+            t = new Texture2D(w, h, TextureFormat.RGBA32, true) { name = "Rug_" + kind, wrapMode = TextureWrapMode.Clamp, anisoLevel = 4 };
+            var rnd = new System.Random(kind.GetHashCode());
+            var px = new Color[w * h];
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float u = (float)x / w, v = (float)y / h;
+                float fiber = 0.92f + (float)rnd.NextDouble() * 0.08f; // Flor
+                float edge = Mathf.Min(Mathf.Min(u, 1 - u), Mathf.Min(v, 1 - v));
+                Color c;
+                switch (kind)
+                {
+                    case "border":
+                        c = edge < 0.06f ? new Color(0.55f, 0.55f, 0.55f) : edge < 0.075f ? new Color(0.98f, 0.98f, 0.98f) : new Color(0.85f, 0.85f, 0.85f);
+                        break;
+                    case "stripes":
+                        c = (Mathf.FloorToInt(u * 9) % 2 == 0) ? new Color(0.95f, 0.95f, 0.95f) : new Color(0.6f, 0.6f, 0.6f);
+                        if (edge < 0.03f) c = new Color(0.45f, 0.45f, 0.45f);
+                        break;
+                    case "persian":
+                    {
+                        var red = new Color(0.55f, 0.1f, 0.1f); var navy = new Color(0.1f, 0.13f, 0.3f);
+                        var cream = new Color(0.88f, 0.8f, 0.62f); var gold = new Color(0.75f, 0.55f, 0.2f);
+                        float cx = u - 0.5f, cy = v - 0.5f;
+                        float diamond = Mathf.Abs(cx) * 1.4f + Mathf.Abs(cy);
+                        float orn = Mathf.Sin(u * 60f) * Mathf.Sin(v * 60f);
+                        if (edge < 0.04f) c = navy;
+                        else if (edge < 0.1f) c = (Mathf.Sin((u + v) * 90f) > 0.3f) ? gold : navy;
+                        else if (edge < 0.115f) c = cream;
+                        else if (diamond < 0.12f) c = navy;
+                        else if (diamond < 0.16f) c = gold;
+                        else if (diamond < 0.3f) c = orn > 0.4f ? cream : red;
+                        else c = orn > 0.65f ? gold : red;
+                        break;
+                    }
+                    default:
+                        c = new Color(0.9f, 0.9f, 0.9f);
+                        break;
+                }
+                px[y * w + x] = c * fiber;
+            }
+            t.SetPixels(px);
+            t.Apply(true);
+            RugTex[kind] = t;
+            return t;
+        }
+
         public static Texture2D NoiseTexture(int s, float baseV, float amp)
         {
             if (_noise != null) return _noise;

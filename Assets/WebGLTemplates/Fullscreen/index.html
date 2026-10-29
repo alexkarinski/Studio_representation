@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
@@ -18,9 +18,9 @@
 <body>
   <canvas id="unity-canvas" tabindex="-1"></canvas>
   <div id="loader">
-    <div class="title">Загрузка студии…</div>
+    <div class="title">Studio wird geladen …</div>
     <div id="bar"><div id="fill"></div></div>
-    <div class="hint">Первый запуск может занять до минуты</div>
+    <div class="hint">Der erste Start kann bis zu einer Minute dauern</div>
     <div id="error"></div>
   </div>
   <script>
@@ -53,7 +53,7 @@
       }).catch(function (message) {
         var e = document.querySelector("#error");
         e.style.display = "block";
-        e.textContent = "Не удалось запустить: " + message;
+        e.textContent = "Start fehlgeschlagen: " + message;
       });
     };
     document.body.appendChild(script);
