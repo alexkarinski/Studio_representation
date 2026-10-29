@@ -103,6 +103,7 @@ namespace Studio
                     if (Input.GetKeyDown(KeyCode.Escape)) rig.ExitPov();
                     if (Input.GetKeyDown(KeyCode.C)) NextCamera(1);
                     if (Input.GetKeyDown(KeyCode.L)) SetLive(rig.Pov);
+                    if (Input.GetKeyDown(KeyCode.Space)) ToggleRecording(rig.Pov);
                     if (Input.GetKeyDown(KeyCode.H)) _hideUI = !_hideUI;
                     if (Input.GetKeyDown(KeyCode.P)) StartCoroutine(Screenshot());
                     for (int i = 0; i < StudioCameraRig.Presets.Length && i < 9; i++)
@@ -123,9 +124,18 @@ namespace Studio
                 _downMouse = Input.mousePosition;
                 var ray = cam.ScreenPointToRay(Input.mousePosition);
                 StudioProp hitProp = null;
+                StudioFixture hitFixture = null;
                 if (Physics.Raycast(ray, out var hit, 100f))
+                {
                     hitProp = hit.collider.GetComponentInParent<StudioProp>();
-                if (hitProp != null)
+                    hitFixture = hit.collider.GetComponentInParent<StudioFixture>();
+                }
+                if (hitFixture != null)
+                {
+                    SelectFixture(hitFixture);
+                    _clickConsumed = true;
+                }
+                else if (hitProp != null)
                 {
                     Select(hitProp);
                     if (FloorPoint(ray, out var fp)) _dragOffset = hitProp.transform.position - fp;
@@ -157,7 +167,7 @@ namespace Studio
             if (Input.GetMouseButtonUp(0) && _pendingDeselect)
             {
                 _pendingDeselect = false;
-                if ((Input.mousePosition - _downMouse).sqrMagnitude < 16f) Select(null);
+                if ((Input.mousePosition - _downMouse).sqrMagnitude < 16f) { Select(null); _fixture = null; }
             }
 
             if (_selected != null && !typing)
@@ -178,6 +188,7 @@ namespace Studio
                 if (Input.GetKeyDown(KeyCode.P)) StartCoroutine(Screenshot());
             }
 
+            MoveFixtureByKeys();
             UpdateSelectionRing();
         }
 
@@ -209,6 +220,10 @@ namespace Studio
                 if (_selected != null && (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))) { if (_carried == _selected) Drop(); DeleteSelected(); }
             }
 
+            // an eine Kamera treten
+            _nearCam = _carried == null ? NearestCamera(1.8f) : null;
+            if (!typing && _nearCam != null && Input.GetKeyDown(KeyCode.E)) { rig.EnterPov(_nearCam); return; }
+
             if (Input.GetMouseButtonDown(0) && !PointerOverUI())
             {
                 if (_carried != null) Drop();
@@ -232,6 +247,20 @@ namespace Studio
                 _carried.transform.position = Vector3.MoveTowards(_carried.transform.position, target, DragSpeed * Time.unscaledDeltaTime);
             }
             UpdateSelectionRing();
+        }
+
+        StudioCam _nearCam;
+
+        StudioCam NearestCamera(float maxDist)
+        {
+            StudioCam best = null;
+            float bd = maxDist;
+            foreach (var c in Cameras())
+            {
+                var d = Vector3.ProjectOnPlane(c.transform.position - rig.WalkFeet, Vector3.up).magnitude;
+                if (d < bd) { bd = d; best = c; }
+            }
+            return best;
         }
 
         void PickUp(StudioProp p)
@@ -271,6 +300,16 @@ namespace Studio
 
         void UpdateSelectionRing()
         {
+            if (!_hideUI && _selected == null && _fixture != null && _fixture.lightSource != null)
+            {
+                // Ring auf dem Boden, wo die Strahlachse auftrifft
+                var lt = _fixture.lightSource.transform;
+                var hitPos = lt.forward.y < -0.05f ? lt.position + lt.forward * (lt.position.y / -lt.forward.y) : new Vector3(_fixture.transform.position.x, 0, _fixture.transform.position.z);
+                _selRing.SetActive(true);
+                _selRing.transform.position = new Vector3(hitPos.x, 0.012f, hitPos.z);
+                _selRing.transform.localScale = new Vector3(0.8f, 0.005f, 0.8f);
+                return;
+            }
             if (_hideUI || _selected == null || !_selected.gameObject.activeInHierarchy) { _selRing.SetActive(false); return; }
             var col = _selected.GetComponent<BoxCollider>();
             float r = col != null ? Mathf.Max(col.size.x, col.size.z) * 0.6f + 0.1f : 0.6f;
@@ -280,8 +319,37 @@ namespace Studio
             _selRing.transform.localScale = new Vector3(r * 2, 0.005f, r * 2);
         }
 
+        StudioFixture _fixture;
+
+        void SelectFixture(StudioFixture f)
+        {
+            Select(null);
+            _fixture = f;
+            if (f != null) _tab = Tab.Light;
+        }
+
+        /// <summary>Ausgewählten Deckenscheinwerfer mit Pfeiltasten verfahren (begrenzte Geschwindigkeit).</summary>
+        void MoveFixtureByKeys()
+        {
+            if (_fixture == null || GUIUtility.keyboardControl != 0) return;
+            float dt = Time.unscaledDeltaTime, v = IsShift() ? 1.2f : 0.5f;
+            bool changed = false;
+            var fwd = Vector3.ProjectOnPlane(rig.Cam.transform.forward, Vector3.up).normalized;
+            var rgt = Vector3.Cross(Vector3.up, fwd);
+            var mv = Vector3.zero;
+            if (Input.GetKey(KeyCode.UpArrow)) mv += fwd;
+            if (Input.GetKey(KeyCode.DownArrow)) mv -= fwd;
+            if (Input.GetKey(KeyCode.RightArrow)) mv += rgt;
+            if (Input.GetKey(KeyCode.LeftArrow)) mv -= rgt;
+            if (mv.sqrMagnitude > 0) { _fixture.x += mv.normalized.x * v * dt; _fixture.z += mv.normalized.z * v * dt; changed = true; }
+            if (Input.GetKey(KeyCode.Home)) { _fixture.drop -= 0.4f * dt; changed = true; }
+            if (Input.GetKey(KeyCode.End)) { _fixture.drop += 0.4f * dt; changed = true; }
+            if (changed) { ApplyLight(); _fixture.RefitCollider(); }
+        }
+
         void Select(StudioProp p)
         {
+            if (p != null) _fixture = null;
             _selected = p;
             _propImagePath = p != null ? p.imagePath : "";
             if (p != null) _tab = Tab.Objects;
@@ -338,6 +406,23 @@ namespace Studio
             int i = rig.InPov ? cams.IndexOf(rig.Pov) : -1;
             i = (i + dir + cams.Count) % cams.Count;
             rig.EnterPov(cams[i]);
+        }
+
+        void ToggleRecording(StudioCam c)
+        {
+            var mv = c != null ? c.GetComponent<CameraMove>() : null;
+            if (mv == null) return;
+            if (mv.recording)
+            {
+                mv.StopRecording();
+                Status($"Aufnahme gespeichert: {mv.Duration:0.0} s — ▶ zum Ansehen (im Sucher oder in der Übersicht)");
+            }
+            else
+            {
+                foreach (var other in builder.set.GetComponentsInChildren<CameraMove>()) other.StopRecording();
+                mv.StartRecording();
+                Status("Aufnahme läuft — Kamera führen, Leertaste beendet");
+            }
         }
 
         void SetLive(StudioCam c)
@@ -556,6 +641,8 @@ namespace Studio
 
         void ApplyLight()
         {
+            StudioBuilder.SetPhysicalLighting(_state.physicalFalloff);
+            StudioBuilder.SetShadowQuality(_state.shadowQuality);
             builder.ApplyLighting(_state.lightMaster, _state.lightKelvin, _fixtureOn);
             RenderSettings.ambientLight = new Color(_state.ambient, _state.ambient, _state.ambient * 1.05f);
         }
@@ -602,6 +689,13 @@ namespace Studio
         {
             _state.name = _projectName;
             _state.fixtures = _fixtureOn;
+            _state.fixtureStates = builder.fixtures.Where(f => f != null).Select(f => new FixtureData
+            {
+                number = f.number, on = f.on, x = f.x, z = f.z, drop = f.drop, pan = f.pan, tilt = f.tilt,
+                dimmer = f.dimmer, focus = f.focus, doors = f.doors != null ? (float[])f.doors.angles.Clone() : new float[4],
+                ownKelvin = f.ownKelvin, kelvin = f.kelvin, gel = f.gel, gelName = f.gelName,
+                castShadows = f.castShadows, diffusion = f.diffusion
+            }).ToList();
             _state.props = AllProps().Select(p =>
             {
                 var d = new PropData
@@ -610,7 +704,8 @@ namespace Studio
                     pos = p.transform.localPosition,
                     rotY = p.transform.localEulerAngles.y,
                     color = p.color,
-                    image = p.imagePath ?? ""
+                    image = p.imagePath ?? "",
+                    castShadows = p.castShadows
                 };
                 var c = p.GetComponent<StudioCam>();
                 if (c != null) { d.camNumber = c.number; d.camPan = c.pan; d.camTilt = c.tilt; d.camFocal = c.focal; d.camHeight = c.height; }
@@ -661,6 +756,7 @@ namespace Studio
                 var p = PropFactory.Create(d.type, builder.set, d.pos, d.rotY, d.color);
                 if (p == null) continue;
                 if (!string.IsNullOrEmpty(d.image)) p.SetImage(d.image);
+                if (!d.castShadows) p.SetCastShadows(false);
                 var c = p.GetComponent<StudioCam>();
                 if (c != null && d.camNumber > 0)
                 {
@@ -687,6 +783,19 @@ namespace Studio
             _projectName = data.name;
             if (data.fixtures != null && data.fixtures.Length == builder.fixtureLights.Count) _fixtureOn = data.fixtures;
             else _fixtureOn = Enumerable.Repeat(true, builder.fixtureLights.Count).ToArray();
+            if (data.fixtureStates != null)
+                foreach (var fd in data.fixtureStates)
+                {
+                    var f = builder.fixtures.FirstOrDefault(x => x != null && x.number == fd.number);
+                    if (f == null) continue;
+                    f.on = fd.on; f.x = fd.x; f.z = fd.z; f.drop = fd.drop; f.pan = fd.pan; f.tilt = fd.tilt;
+                    f.dimmer = fd.dimmer; if (fd.focus > 0) f.focus = fd.focus;
+                    if (f.doors != null && fd.doors != null && fd.doors.Length == 4) f.doors.angles = (float[])fd.doors.Clone();
+                    f.ownKelvin = fd.ownKelvin; f.kelvin = fd.kelvin; f.gel = fd.gel; f.gelName = fd.gelName;
+                    f.castShadows = fd.castShadows; f.diffusion = fd.diffusion;
+                    f.RefitCollider();
+                }
+            _fixtureOn = builder.fixtures.Select(f => f == null || f.on).ToArray();
             SetFloorColor(data.floorColor);
             _wallImagePath = data.wallImage;
             SetWallImage(data.wallImage);
@@ -932,6 +1041,16 @@ namespace Studio
             for (int i = 0; i < cols.Length; i++)
                 GUI.Label(new Rect(x0 + i * colW, f.y, colW, barH), cols[i], hud);
 
+            var rec = cam.GetComponent<CameraMove>();
+            if (rec != null && (rec.recording || rec.playing))
+            {
+                bool blink = rec.playing || Mathf.Repeat(Time.unscaledTime, 1f) < 0.6f;
+                var rr = new Rect(f.xMax - 170 * s, f.y + barH + 8 * s, 156 * s, 24 * s);
+                Fill(rr, new Color(0, 0, 0, 0.6f));
+                var t = System.TimeSpan.FromSeconds(rec.time);
+                GUI.Label(rr, (rec.recording ? (blink ? "● REC  " : "   REC  ") : "▶ PLAY  ") + $"{(int)t.TotalMinutes:00}:{t.Seconds:00}.{t.Milliseconds / 100}", hudBig);
+            }
+
             // Tally: rote Umrandung, wenn diese Kamera auf Sendung ist
             if (cam == _liveCam)
             {
@@ -950,7 +1069,7 @@ namespace Studio
         {
             var cam = rig.Pov;
             if (cam == null) return;
-            float h = 150;
+            float h = 182;
             _povBarRect = new Rect(8, UiH - h - 8, Mathf.Min(UiW - 16, 980), h);
             GUILayout.BeginArea(_povBarRect, _box);
             GUILayout.BeginHorizontal();
@@ -980,6 +1099,13 @@ namespace Studio
             _state.viewfinderOverlay = GUILayout.Toggle(_state.viewfinderOverlay, " Sucher-Overlay", GUILayout.Width(120));
             if (GUILayout.Button("Oberfläche aus (H)", GUILayout.Width(140))) _hideUI = true;
             GUILayout.EndHorizontal();
+            var mvRec = cam.GetComponent<CameraMove>();
+            GUILayout.BeginHorizontal();
+            var prevBg = GUI.backgroundColor;
+            if (mvRec != null && mvRec.recording) GUI.backgroundColor = new Color(1f, 0.3f, 0.3f);
+            if (GUILayout.Button(mvRec != null && mvRec.recording ? "■ Aufnahme stoppen (Leertaste)" : "● Aufnahme: Kamerafahrt live aufzeichnen (Leertaste)", GUILayout.Height(26))) ToggleRecording(cam);
+            GUI.backgroundColor = prevBg;
+            GUILayout.EndHorizontal();
             DrawMoveControls(cam, true);
             GUILayout.Label("Ziehen/Pfeile: schwenken/neigen · Rad: zoomen · WASD: Kamera fahren · R/F: höher/tiefer · C: nächste Kamera", _small);
             GUILayout.EndArea();
@@ -995,6 +1121,12 @@ namespace Studio
             Fill(new Rect(c.x - 8 * s, c.y - 1, 16 * s, 2), col);
             Fill(new Rect(c.x - 1, c.y - 8 * s, 2, 16 * s), col);
             var st = new GUIStyle(_hud) { fontSize = Mathf.RoundToInt(13 * s) };
+            if (_nearCam != null && _carried == null)
+            {
+                var r0 = new Rect(0, Screen.height / 2f + 30 * s, Screen.width, 30 * s);
+                Fill(new Rect(c.x - 170 * s, r0.y, 340 * s, r0.height), new Color(0, 0, 0, 0.6f));
+                GUI.Label(r0, "E: an Kamera " + _nearCam.number + " treten und führen", st);
+            }
             string hint = _carried != null
                 ? "Trägt: " + _carried.displayName + "  ·  Q/E drehen  ·  Mausrad näher/weiter  ·  Klick: abstellen"
                 : "WASD gehen · Shift rennen · rechte Maustaste: umsehen · Klick auf Objekt: aufnehmen · F/Esc: Laufmodus beenden";
@@ -1302,6 +1434,12 @@ namespace Studio
                 spot.tilt = GUILayout.HorizontalSlider(spot.tilt, -80f, 30f);
                 GUILayout.Label($"Helligkeit: {spot.intensity:0.0}", _small);
                 spot.intensity = GUILayout.HorizontalSlider(spot.intensity, 0f, 4f);
+                if (spot.focus > 0)
+                {
+                    GUILayout.Label($"Fokus: {spot.focus:0}° — schmal = heller", _small);
+                    spot.focus = GUILayout.HorizontalSlider(spot.focus, spot.minFocus, spot.maxFocus);
+                }
+                DrawDoors(spot.doors);
                 spot.Apply();
                 if (GUILayout.Button("Auf die Sitzgruppe ausrichten")) spot.AimAt(StudioBuilder.SetCenter);
             }
@@ -1326,6 +1464,8 @@ namespace Studio
                     else Status("Datei nicht gefunden oder kein Bild: " + path);
                 });
             }
+            bool shadowsOn = GUILayout.Toggle(_selected.castShadows, " wirft Schatten");
+            if (shadowsOn != _selected.castShadows) _selected.SetCastShadows(shadowsOn);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Kopieren")) Duplicate();
             if (GUILayout.Button("Löschen")) DeleteSelected();
@@ -1344,7 +1484,7 @@ namespace Studio
             if (GUILayout.Button("4300 K")) k = 4300;
             if (GUILayout.Button("5600 K (Tageslicht)")) k = 5600;
             GUILayout.EndHorizontal();
-            GUILayout.Label("Grundlicht im Raum: " + _state.ambient.ToString("0.00"), _small);
+            GUILayout.Label("Grundlicht im Raum (hellt alle Schatten auf): " + _state.ambient.ToString("0.00"), _small);
             float a = GUILayout.HorizontalSlider(_state.ambient, 0f, 0.6f);
             if (m != _state.lightMaster || k != _state.lightKelvin || a != _state.ambient)
             {
@@ -1352,23 +1492,156 @@ namespace Studio
                 ApplyLight();
             }
 
+            bool phys = GUILayout.Toggle(_state.physicalFalloff, " Physikalischer Lichtabfall (1/r², Kelvin, Schatten)");
+            if (phys != _state.physicalFalloff) { _state.physicalFalloff = phys; ApplyLight(); }
+            GUILayout.Label("Schatten (Personen, Möbel, Technik) — bei langsamen Rechnern niedriger stellen:", _small);
+            int sq = GUILayout.Toolbar(_state.shadowQuality, StudioBuilder.ShadowQualityNames);
+            if (sq != _state.shadowQuality) { _state.shadowQuality = sq; StudioBuilder.SetShadowQuality(sq); }
+
+            if (_fixture != null) DrawFixturePanel(_fixture);
+
             GUILayout.Space(8);
-            GUILayout.Label("Scheinwerfer an Pantografen", _h2);
+            GUILayout.Label("Scheinwerfer an Pantografen (anklicken zum Einstellen)", _h2);
             bool changed = false;
-            for (int i = 0; i < builder.fixtureLights.Count; i++)
+            for (int i = 0; i < builder.fixtures.Count; i++)
             {
-                var l = builder.fixtureLights[i];
-                if (l == null) continue;
-                string fixtureName = l.transform.parent.parent.name.Replace("Fixture_", "Scheinwerfer Nr. ") + (l.spotAngle > 60 ? " (Softlight)" : " (Stufenlinse)");
-                bool on = GUILayout.Toggle(_fixtureOn[i], " " + fixtureName);
+                var f = builder.fixtures[i];
+                if (f == null) continue;
+                GUILayout.BeginHorizontal();
+                bool on = GUILayout.Toggle(_fixtureOn[i], "", GUILayout.Width(20));
                 if (on != _fixtureOn[i]) { _fixtureOn[i] = on; changed = true; }
+                var label = (f == _fixture ? "▶ " : "") + f.Title + (f.dimmer < 0.999f ? "  " + (f.dimmer * 100).ToString("0") + " %" : "") + (f.gel != Color.white ? "  · " + f.gelName : "");
+                if (GUILayout.Button(label, GUI.skin.label)) SelectFixture(f);
+                GUILayout.EndHorizontal();
             }
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Alle an")) { for (int i = 0; i < _fixtureOn.Length; i++) _fixtureOn[i] = true; changed = true; }
+            if (GUILayout.Button("Alle auf Sitzgruppe")) { foreach (var f in builder.fixtures) f.AimAt(StudioBuilder.SetCenter + Vector3.up * 0.4f); changed = true; }
             if (GUILayout.Button("Alle aus")) { for (int i = 0; i < _fixtureOn.Length; i++) _fixtureOn[i] = false; changed = true; }
             GUILayout.EndHorizontal();
             if (changed) ApplyLight();
             GUILayout.Label("Stativscheinwerfer und LED-Röhren findest du unter „Objekte → Licht“.", _small);
+        }
+
+        static readonly string[] DoorSteps = { "offen", "¼", "½", "¾", "4/4" };
+
+        /// <summary>Torblende: pro Seite 0 … 4/4 in Vierteln.</summary>
+        bool DrawDoors(BarnDoors doors)
+        {
+            if (doors == null) return false;
+            bool changed = false;
+            GUILayout.Label("Klappen (Torblende) — Winkel je Seite: −30° gespreizt · 0° parallel · 90° zu", _small);
+            for (int i = 0; i < 4; i++)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(BarnDoors.SideNames[i] + $" {doors.angles[i]:0}°", _small, GUILayout.Width(78));
+                float na = Mathf.Round(GUILayout.HorizontalSlider(doors.angles[i], BarnDoors.MinAngle, BarnDoors.MaxAngle, GUILayout.Width(120)));
+                if (Mathf.Abs(na - doors.angles[i]) > 0.01f) { doors.angles[i] = na; changed = true; }
+                // Schnellwahl in Vierteln
+                float step = BarnDoors.StepForAngle(doors.angles[i]) * 4f;
+                int cur = Mathf.Abs(step - Mathf.Round(step)) < 0.02f ? Mathf.RoundToInt(step) : -1;
+                int sel = GUILayout.Toolbar(cur, DoorSteps);
+                if (sel != cur && sel >= 0) { doors.angles[i] = BarnDoors.AngleForStep(sel / 4f); changed = true; }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Alle offen")) { for (int i = 0; i < 4; i++) doors.angles[i] = BarnDoors.OpenAngle; changed = true; }
+            if (GUILayout.Button("Waagrechter Streifen")) { doors.angles[0] = doors.angles[1] = 70f; doors.angles[2] = doors.angles[3] = BarnDoors.OpenAngle; changed = true; }
+            if (GUILayout.Button("Senkrechter Streifen")) { doors.angles[2] = doors.angles[3] = 70f; doors.angles[0] = doors.angles[1] = BarnDoors.OpenAngle; changed = true; }
+            GUILayout.EndHorizontal();
+            if (changed) doors.Apply();
+            return changed;
+        }
+
+        bool DrawColorControls(ref bool ownKelvin, ref float kelvin, ref Color gel, ref string gelName)
+        {
+            bool changed = false;
+            bool ok = GUILayout.Toggle(ownKelvin, " Eigene Farbtemperatur");
+            if (ok != ownKelvin) { ownKelvin = ok; changed = true; }
+            if (ownKelvin)
+            {
+                GUILayout.Label($"Farbtemperatur: {kelvin:0} K", _small);
+                float nk = Mathf.Round(GUILayout.HorizontalSlider(kelvin, 2700f, 6500f) / 50f) * 50f;
+                if (Mathf.Abs(nk - kelvin) > 1f) { kelvin = nk; changed = true; }
+            }
+            GUILayout.Label("Farbfilter (Gel): " + gelName, _small);
+            var gels = StudioFixture.Gels;
+            var prevBg = GUI.backgroundColor;
+            for (int i = 0; i < gels.Length; i += 7)
+            {
+                GUILayout.BeginHorizontal();
+                for (int j = i; j < Mathf.Min(i + 7, gels.Length); j++)
+                {
+                    GUI.backgroundColor = gels[j].c;
+                    if (GUILayout.Button(new GUIContent(j == 0 ? "–" : "", gels[j].name), _swatch, GUILayout.Width(38), GUILayout.Height(22)))
+                    { gel = gels[j].c; gelName = gels[j].name; changed = true; }
+                }
+                GUILayout.EndHorizontal();
+            }
+            GUI.backgroundColor = prevBg;
+            GUILayout.BeginHorizontal();
+            float r = GUILayout.HorizontalSlider(gel.r, 0, 1), g = GUILayout.HorizontalSlider(gel.g, 0, 1), b = GUILayout.HorizontalSlider(gel.b, 0, 1);
+            GUILayout.EndHorizontal();
+            if (r != gel.r || g != gel.g || b != gel.b) { gel = new Color(r, g, b); gelName = "eigene Farbe"; changed = true; }
+            if (!string.IsNullOrEmpty(GUI.tooltip)) GUILayout.Label(GUI.tooltip, _small);
+            return changed;
+        }
+
+        void DrawFixturePanel(StudioFixture f)
+        {
+            GUILayout.Space(6);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(f.Title, _h2);
+            if (GUILayout.Button("×", GUILayout.Width(24))) { _fixture = null; GUILayout.EndHorizontal(); return; }
+            GUILayout.EndHorizontal();
+            bool changed = false;
+            int idx = builder.fixtures.IndexOf(f);
+            bool on = GUILayout.Toggle(f.on, " eingeschaltet");
+            if (on != f.on) { f.on = on; if (idx >= 0) _fixtureOn[idx] = on; changed = true; }
+
+            GUILayout.Label($"Dimmer: {f.dimmer * 100:0} %", _small);
+            float d = GUILayout.HorizontalSlider(f.dimmer, 0f, 1f);
+            if (Mathf.Abs(d - f.dimmer) > 0.0005f) { f.dimmer = d; changed = true; }
+            if (f.IsFresnel)
+            {
+                GUILayout.Label($"Fokus: {f.focus:0}° ({(f.focus < 25 ? "Spot" : f.focus > 45 ? "Flood" : "mittel")}) — schmal = heller", _small);
+                float fo = GUILayout.HorizontalSlider(f.focus, f.minFocus, f.maxFocus);
+                if (Mathf.Abs(fo - f.focus) > 0.01f) { f.focus = fo; changed = true; }
+            }
+
+            GUILayout.Label("Position an der Decke (Pfeiltasten, Pos1/Ende = Höhe)", _small);
+            GUILayout.Label($"Vor/zurück: {f.z:0.00} m", _small);
+            float z = GUILayout.HorizontalSlider(f.z, StudioFixture.MinZ, StudioFixture.MaxZ);
+            GUILayout.Label($"Seitlich: {f.x:0.00} m", _small);
+            float x = GUILayout.HorizontalSlider(f.x, StudioFixture.MinX, StudioFixture.MaxX);
+            GUILayout.Label($"Höhe des Scheinwerfers: {f.HeadHeight:0.00} m über dem Boden", _small);
+            float h = GUILayout.HorizontalSlider(f.HeadHeight, StudioBuilder.GridY - StudioFixture.MaxDrop - 0.3f, StudioBuilder.GridY - StudioFixture.MinDrop - 0.3f);
+            if (Mathf.Abs(z - f.z) > 0.001f || Mathf.Abs(x - f.x) > 0.001f || Mathf.Abs(h - f.HeadHeight) > 0.001f)
+            { f.z = z; f.x = x; f.drop = StudioBuilder.GridY - 0.3f - h; changed = true; }
+
+            GUILayout.Label($"Schwenk: {f.pan:0}°   Neigung: {f.tilt:0}°", _small);
+            float pn = GUILayout.HorizontalSlider(f.pan, -180f, 180f);
+            float tl = GUILayout.HorizontalSlider(f.tilt, -90f, 30f);
+            if (Mathf.Abs(pn - f.pan) > 0.01f || Mathf.Abs(tl - f.tilt) > 0.01f) { f.pan = pn; f.tilt = tl; changed = true; }
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Auf Sitzgruppe")) { f.AimAt(StudioBuilder.SetCenter + Vector3.up * 0.4f); changed = true; }
+            if (GUILayout.Button("Senkrecht nach unten")) { f.tilt = -90f; changed = true; }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label("Schatten", _small);
+            bool cs = GUILayout.Toggle(f.castShadows, " wirft Schatten");
+            if (cs != f.castShadows) { f.castShadows = cs; changed = true; }
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Diffusor:", _small, GUILayout.Width(60));
+            int df = GUILayout.Toolbar(f.diffusion, StudioFixture.DiffusionNames);
+            if (df != f.diffusion) { f.diffusion = df; changed = true; }
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Tipp gegen harte Schatten: Diffusor davor, Scheinwerfer höher hängen oder ein Softlight als Aufheller von der anderen Seite einschalten.", _small);
+
+            if (DrawDoors(f.doors)) changed = true;
+            if (DrawColorControls(ref f.ownKelvin, ref f.kelvin, ref f.gel, ref f.gelName)) changed = true;
+
+            if (changed) { ApplyLight(); f.RefitCollider(); }
         }
 
         void DrawProjectTab()

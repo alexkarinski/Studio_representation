@@ -22,6 +22,9 @@ namespace Studio
         public bool programOnMonitor = true;
         public bool viewfinderOverlay = true;
         public bool showPaths = true;
+        public bool physicalFalloff = true;
+        public int shadowQuality = 3;
+        public List<FixtureData> fixtureStates = new List<FixtureData>();
         public bool pictureInPicture = true;
     }
 
@@ -33,6 +36,7 @@ namespace Studio
         public float rotY;
         public Color color;
         public string image = "";
+        public bool castShadows = true;
         // nur für Studiokameras
         public int camNumber;
         public float camPan, camTilt, camFocal = 24f, camHeight = 1.3f;
@@ -44,5 +48,21 @@ namespace Studio
         public float mountHeight = -1f, screenDiagonal = -1f;
         // Beamer
         public float projPan, projTilt = 5f, projHeight = 1.1f, projThrow = 1.4f, projBrightness = 1f;
+    }
+
+    /// <summary>Zustand eines Deckenscheinwerfers.</summary>
+    [Serializable]
+    public class FixtureData
+    {
+        public int number;
+        public bool on = true;
+        public float x, z, drop, pan, tilt, dimmer = 1f, focus;
+        public float[] doors = new float[4];
+        public bool ownKelvin;
+        public float kelvin = 4300f;
+        public Color gel = Color.white;
+        public string gelName = "";
+        public bool castShadows = true;
+        public int diffusion;
     }
 }

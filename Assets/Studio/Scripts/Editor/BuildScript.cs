@@ -43,6 +43,16 @@ namespace Studio.EditorTools
             PlayerSettings.WebGL.dataCaching = true;
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
             PlayerSettings.WebGL.template = "PROJECT:Fullscreen";
+            // physikalisches Licht: lineare Intensität, Kelvin, eigener Deferred-Shader mit 1/r²-Abfall
+            GraphicsSettings.lightsUseLinearIntensity = true;
+            GraphicsSettings.lightsUseColorTemperature = true;
+            var deferred = AssetDatabase.LoadAssetAtPath<Shader>("Assets/Studio/Shaders/StudioDeferredShading.shader");
+            if (deferred != null)
+            {
+                GraphicsSettings.SetShaderMode(BuiltinShaderType.DeferredShading, BuiltinShaderMode.UseCustom);
+                GraphicsSettings.SetCustomShader(BuiltinShaderType.DeferredShading, deferred);
+            }
+            else Debug.LogWarning("StudioDeferredShading.shader nicht gefunden — Standard-Lichtabfall");
             // объекты собираются из кода (CreatePrimitive и т.п.) — движок не должен вырезать «неиспользуемые» компоненты
             PlayerSettings.stripEngineCode = false;
         }

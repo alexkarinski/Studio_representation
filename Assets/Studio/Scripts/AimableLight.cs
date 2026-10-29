@@ -10,6 +10,9 @@ namespace Studio
         public Transform panPivot, tiltPivot;
         public Light lightSource;
         public Material lensMat;
+        public BarnDoors doors;
+        /// <summary>Fokus (Abstrahlwinkel) in Grad; 0 = nicht fokussierbar.</summary>
+        public float focus, minFocus, maxFocus;
 
         public void Apply()
         {
@@ -18,10 +21,20 @@ namespace Studio
             intensity = Mathf.Clamp(intensity, 0f, 4f);
             if (panPivot != null) panPivot.localRotation = Quaternion.Euler(0, pan, 0);
             if (tiltPivot != null) tiltPivot.localRotation = Quaternion.Euler(-tilt, 0, 0);
+            if (doors != null) doors.Apply();
             if (lightSource != null)
             {
-                lightSource.intensity = intensity;
-                lightSource.enabled = intensity > 0.01f;
+                float gain = 1f;
+                if (focus > 0 && lightSource.type == LightType.Spot)
+                {
+                    focus = Mathf.Clamp(focus, minFocus, maxFocus);
+                    lightSource.spotAngle = focus;
+                    lightSource.innerSpotAngle = focus * 0.45f;
+                    // gleicher Lichtstrom: schmaler Kegel → hellere Mitte
+                    gain = Mathf.Clamp((1f - Mathf.Cos(17f * Mathf.Deg2Rad)) / (1f - Mathf.Cos(focus * 0.5f * Mathf.Deg2Rad)), 0.25f, 4f);
+                }
+                lightSource.intensity = intensity * gain;
+                lightSource.enabled = intensity > 0.01f && (doors == null || !doors.FullyClosed);
             }
             if (lensMat != null) lensMat.SetColor("_EmissionColor", lensMat.color * (0.2f + intensity * 1.5f));
         }

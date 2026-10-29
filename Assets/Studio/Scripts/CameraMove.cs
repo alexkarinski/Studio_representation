@@ -27,6 +27,11 @@ namespace Studio
         public bool playing;
         public float time;
 
+        // ---- Aufnahme: Kameraführung live mitschreiben ----
+        public const float SampleInterval = 0.25f;
+        public bool recording;
+        float _nextSample;
+
         StudioCam _cam;
         StudioCam Cam => _cam != null ? _cam : (_cam = GetComponent<StudioCam>());
 
@@ -77,9 +82,29 @@ namespace Studio
             for (int j = i; j < keys.Count; j++) keys[j].time += delta;
         }
 
+        /// <summary>Startet die Aufnahme: jede Bewegung (Fahren, Schwenk, Neigung, Zoom, Höhe) wird als Fahrt gespeichert.</summary>
+        public void StartRecording()
+        {
+            playing = false;
+            keys.Clear();
+            ease = false;   // aufgezeichnetes Timing exakt wiedergeben
+            loop = false;
+            time = 0f;
+            keys.Add(Capture(0f));
+            _nextSample = SampleInterval;
+            recording = true;
+        }
+
+        public void StopRecording()
+        {
+            if (!recording) return;
+            recording = false;
+            if (keys.Count == 0 || time - keys[keys.Count - 1].time > 0.05f) keys.Add(Capture(time));
+        }
+
         public void Play()
         {
-            if (!CanPlay) return;
+            if (!CanPlay || recording) return;
             if (time >= Duration - 0.01f) time = 0f;
             playing = true;
         }
@@ -94,6 +119,16 @@ namespace Studio
 
         void Update()
         {
+            if (recording)
+            {
+                time += Time.deltaTime;
+                if (time >= _nextSample)
+                {
+                    keys.Add(Capture(time));
+                    _nextSample += SampleInterval;
+                }
+                return;
+            }
             if (!playing) return;
             time += Time.deltaTime;
             if (time >= Duration)

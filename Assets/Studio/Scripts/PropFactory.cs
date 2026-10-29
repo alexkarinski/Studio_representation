@@ -350,11 +350,6 @@ namespace Studio
             Geo.Cyl("Housing", head, Vector3.zero, rad, len, M.MetalBlack, new Vector3(90, 0, 0));
             Geo.Cyl("Lens", head, new Vector3(0, 0, len / 2 + 0.005f), rad * 0.85f, 0.01f, lens, new Vector3(90, 0, 0));
             Geo.Cyl("Back", head, new Vector3(0, 0, -len / 2 - 0.02f), rad * 0.9f, 0.04f, M.MetalBlack, new Vector3(90, 0, 0));
-            float d = rad + 0.02f, l = rad * 1.3f;
-            Geo.Box("DoorT", head, new Vector3(0, d + 0.03f, len / 2 + l * 0.45f), new Vector3(rad * 2, 0.005f, l), M.MetalBlack, new Vector3(-30, 0, 0));
-            Geo.Box("DoorB", head, new Vector3(0, -d - 0.03f, len / 2 + l * 0.45f), new Vector3(rad * 2, 0.005f, l), M.MetalBlack, new Vector3(30, 0, 0));
-            Geo.Box("DoorL", head, new Vector3(-d - 0.03f, 0, len / 2 + l * 0.45f), new Vector3(0.005f, rad * 1.6f, l), M.MetalBlack, new Vector3(0, 30, 0));
-            Geo.Box("DoorR", head, new Vector3(d + 0.03f, 0, len / 2 + l * 0.45f), new Vector3(0.005f, rad * 1.6f, l), M.MetalBlack, new Vector3(0, -30, 0));
             Geo.Cyl("FocusKnob", head, new Vector3(0, -rad - 0.02f, -len / 4), 0.02f, 0.04f, M.MetalBlack);
             var l2 = new GameObject("Light").AddComponent<Light>();
             l2.transform.SetParent(head, false);
@@ -364,6 +359,9 @@ namespace Studio
             l2.innerSpotAngle = 14;
             l2.range = 15f;
             l2.shadows = LightShadows.Soft;
+            l2.shadowBias = 0.01f; l2.shadowNormalBias = 0.15f;
+            l2.shadowResolution = UnityEngine.Rendering.LightShadowResolution.High;
+            BarnDoors.Create(head, l2, rad, len / 2 + 0.01f);
             return l2;
         }
 
@@ -393,6 +391,8 @@ namespace Studio
             al.lightSource = SpotHead(al.tiltPivot, lens, 0.15f, 0.3f);
             al.lightSource.color = c;
             al.lensMat = lens;
+            al.doors = al.tiltPivot.GetComponent<BarnDoors>();
+            al.focus = 34f; al.minFocus = 12f; al.maxFocus = 60f;
             al.tilt = -15f; al.intensity = 1.8f;
             al.Apply();
             return r.gameObject;
@@ -416,6 +416,7 @@ namespace Studio
             l.transform.localPosition = new Vector3(0, 0, 0.14f);
             l.type = LightType.Spot;
             l.spotAngle = 40; l.innerSpotAngle = 15; l.range = 8f;
+            l.shadows = LightShadows.Soft; l.shadowBias = 0.01f; l.shadowNormalBias = 0.15f;
             l.color = c;
             al.lightSource = l;
             al.lensMat = lens;

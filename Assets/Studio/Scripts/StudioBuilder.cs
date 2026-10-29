@@ -32,6 +32,7 @@ namespace Studio
         public static float HalfD => Depth / 2;
 
         public Transform room, rig, set;
+        public readonly List<StudioFixture> fixtures = new List<StudioFixture>();
         public readonly List<Light> fixtureLights = new List<Light>();
         public readonly List<float> fixtureBaseIntensity = new List<float>();
         public Renderer whiteWall;
@@ -60,6 +61,7 @@ namespace Studio
 
         public void Clear()
         {
+            fixtures.Clear();
             fixtureLights.Clear();
             fixtureBaseIntensity.Clear();
             for (int i = transform.childCount - 1; i >= 0; i--)
@@ -187,80 +189,50 @@ namespace Studio
                 Geo.Box("WorkLight", g, new Vector3(-5 + i * 3.4f, GridY + 0.6f, -1), new Vector3(1.2f, 0.05f, 0.25f), M.Emissive("WorkLight", Color.white, 1.2f));
         }
 
-        enum Fx { FresnelL, FresnelS, Soft, SoftTeal }
-
         struct FixtureDef
         {
-            public Vector3 pos; public float drop; public Fx type; public int tag; public Vector3 aim; public float intensity;
-            public FixtureDef(float x, float z, float drop, Fx type, int tag, Vector3 aim, float intensity)
-            { pos = new Vector3(x, GridY, z); this.drop = drop; this.type = type; this.tag = tag; this.aim = aim; this.intensity = intensity; }
+            public float x, z, drop, intensity; public StudioFixture.Kind kind; public int tag; public Vector3 aim;
+            public FixtureDef(float x, float z, float drop, StudioFixture.Kind kind, int tag, Vector3 aim, float intensity)
+            { this.x = x; this.z = z; this.drop = drop; this.kind = kind; this.tag = tag; this.aim = aim; this.intensity = intensity; }
         }
 
         void BuildFixtures()
         {
+            const StudioFixture.Kind FL = StudioFixture.Kind.FresnelLarge, FS = StudioFixture.Kind.FresnelSmall,
+                SO = StudioFixture.Kind.Soft, ST = StudioFixture.Kind.SoftTeal;
             var c = SetCenter;
             var face = c + new Vector3(0, 0.4f, 0);
             var defs = new[]
             {
-                // ключевые/заполняющие на сет
-                new FixtureDef(-1.5f, 1.5f, 2.6f, Fx.FresnelL, 15, face, 2.2f),
-                new FixtureDef( 3.5f, 1.8f, 2.4f, Fx.FresnelL, 16, face, 1.8f),
-                new FixtureDef( 1.0f, 2.8f, 2.9f, Fx.Soft,     11, face, 1.4f),
-                new FixtureDef(-3.0f,-0.5f, 2.2f, Fx.Soft,     17, face, 1.0f),
-                new FixtureDef( 4.5f,-3.5f, 2.7f, Fx.FresnelS, 21, c,    1.4f),   // контровой
-                new FixtureDef(-1.5f,-3.8f, 2.5f, Fx.FresnelS, 20, c,    1.3f),   // контровой
-                new FixtureDef( 2.5f,-2.0f, 1.8f, Fx.SoftTeal, 24, c,    0.8f),
-                // на белую стену
-                new FixtureDef( 5.0f, 2.5f, 1.6f, Fx.FresnelS, 23, new Vector3(HalfW, 1.8f, 0.5f), 1.2f),
-                new FixtureDef( 5.5f,-2.0f, 1.5f, Fx.Soft,     12, new Vector3(HalfW, 1.8f, -1.0f), 0.8f),
-                // по периметру (подняты, слабее — дежурный свет)
-                new FixtureDef(-6.0f,-4.5f, 1.2f, Fx.FresnelS, 1,  new Vector3(-6, 0, -2), 0.6f),
-                new FixtureDef(-6.0f, 3.5f, 1.4f, Fx.FresnelS, 2,  new Vector3(-4, 0, 2), 0.6f),
-                new FixtureDef(-3.5f, 4.5f, 1.0f, Fx.SoftTeal, 3,  new Vector3(-2, 0, 3), 0.5f),
-                new FixtureDef( 6.5f,-5.0f, 0.9f, Fx.FresnelL, 4,  new Vector3(4, 0, -3), 0.6f),
-                new FixtureDef( 0.0f,-5.2f, 1.0f, Fx.SoftTeal, 5,  new Vector3(0, 0, -3), 0.5f),
+                // Führung/Aufhellung auf die Sitzgruppe
+                new FixtureDef(-1.5f, 1.5f, 2.6f, FL, 15, face, 2.2f),
+                new FixtureDef( 3.5f, 1.8f, 2.4f, FL, 16, face, 1.8f),
+                new FixtureDef( 1.0f, 2.8f, 2.9f, SO, 11, face, 1.4f),
+                new FixtureDef(-3.0f,-0.5f, 2.2f, SO, 17, face, 1.0f),
+                new FixtureDef( 4.5f,-3.5f, 2.7f, FS, 21, c,    1.4f),   // Spitze/Gegenlicht
+                new FixtureDef(-1.5f,-3.8f, 2.5f, FS, 20, c,    1.3f),   // Spitze/Gegenlicht
+                new FixtureDef( 2.5f,-2.0f, 1.8f, ST, 24, c,    0.8f),
+                // auf die weiße Wand
+                new FixtureDef( 5.0f, 2.5f, 1.6f, FS, 23, new Vector3(HalfW, 1.8f, 0.5f), 1.2f),
+                new FixtureDef( 5.5f,-2.0f, 1.5f, SO, 12, new Vector3(HalfW, 1.8f, -1.0f), 0.8f),
+                // Rand (hochgezogen, schwächer)
+                new FixtureDef(-6.0f,-4.5f, 1.2f, FS, 1,  new Vector3(-6, 0, -2), 0.6f),
+                new FixtureDef(-6.0f, 3.5f, 1.4f, FS, 2,  new Vector3(-4, 0, 2), 0.6f),
+                new FixtureDef(-3.5f, 4.5f, 1.0f, ST, 3,  new Vector3(-2, 0, 3), 0.5f),
+                new FixtureDef( 6.5f,-5.0f, 0.9f, FL, 4,  new Vector3(4, 0, -3), 0.6f),
+                new FixtureDef( 0.0f,-5.2f, 1.0f, ST, 5,  new Vector3(0, 0, -3), 0.5f),
             };
 
             foreach (var d in defs)
             {
-                var root = Geo.Group("Fixture_" + d.tag, rig, d.pos).transform;
-                Pantograph(root, d.drop);
-                var head = Geo.Group("Head", root, new Vector3(0, -d.drop - 0.25f, 0)).transform;
-                head.rotation = Quaternion.LookRotation((d.aim - head.position).normalized, Vector3.up);
-                Light l;
-                switch (d.type)
-                {
-                    case Fx.FresnelL: l = PropFactory.Fresnel(head, true); break;
-                    case Fx.FresnelS: l = PropFactory.Fresnel(head, false); break;
-                    case Fx.SoftTeal: l = PropFactory.SoftPanel(head, true); break;
-                    default: l = PropFactory.SoftPanel(head, false); break;
-                }
-                // бирка с номером
-                Geo.Quad("Tag", root, new Vector3(0.18f, -d.drop + 0.15f, 0.02f), new Vector2(0.22f, 0.16f), M.NumberTag(d.tag), new Vector3(0, 180, 0));
-                l.shadows = d.intensity >= 1.4f ? LightShadows.Soft : LightShadows.None;
-                l.intensity = d.intensity;
-                fixtureLights.Add(l);
+                var f = StudioFixture.Create(rig, d.tag, d.kind, d.x, d.z, d.drop, d.intensity);
+                f.Apply(1f, 4300f);
+                f.AimAt(d.aim);
+                f.Apply(1f, 4300f);
+                fixtures.Add(f);
+                fixtureLights.Add(f.lightSource);
                 fixtureBaseIntensity.Add(d.intensity);
             }
-        }
-
-        /// <summary>Пантограф: «ножницы» от решётки вниз на drop метров.</summary>
-        void Pantograph(Transform root, float drop)
-        {
-            Geo.Box("Trolley", root, new Vector3(0, 0.1f, 0), new Vector3(0.35f, 0.18f, 0.25f), M.MetalBlack);
-            int n = Mathf.Max(2, Mathf.RoundToInt(drop / 0.22f));
-            float seg = drop / n;
-            const float half = 0.11f;
-            for (int i = 0; i < n; i++)
-            {
-                float y0 = -i * seg, y1 = -(i + 1) * seg;
-                Geo.Rod("X1", root, new Vector3(-half, y0, 0), new Vector3(half, y1, 0), 0.008f, M.MetalBlack);
-                Geo.Rod("X2", root, new Vector3(half, y0, 0), new Vector3(-half, y1, 0), 0.008f, M.MetalBlack);
-            }
-            // кабель
-            Geo.Rod("Cable", root, new Vector3(0.05f, 0, 0.05f), new Vector3(0.05f, -drop, 0.05f), 0.006f, M.Rubber);
-            Geo.Box("Plate", root, new Vector3(0, -drop - 0.02f, 0), new Vector3(0.25f, 0.04f, 0.2f), M.MetalBlack);
-            Geo.Box("Connector", root, new Vector3(0.1f, -drop + 0.1f, 0.08f), new Vector3(0.06f, 0.08f, 0.06f), M.PlasticBlue);
         }
 
         // ---------------- Текущая расстановка (как на фото) ----------------
@@ -300,24 +272,43 @@ namespace Studio
             RenderSettings.ambientLight = new Color(0.16f, 0.16f, 0.17f);
             RenderSettings.fog = false;
             RenderSettings.skybox = null;
+            SetPhysicalLighting(true);
             if (!Application.isPlaying) return; // не трогаем настройки проекта из превью
             QualitySettings.pixelLightCount = 16;
-            QualitySettings.shadowDistance = 30f;
+            SetShadowQuality(3);
         }
 
         // ---------------- Управление светом ----------------
 
         public void ApplyLighting(float master, float kelvin, bool[] enabledMask = null)
         {
-            var col = Mathf.CorrelatedColorTemperatureToRGB(kelvin);
-            for (int i = 0; i < fixtureLights.Count; i++)
+            for (int i = 0; i < fixtures.Count; i++)
             {
-                var l = fixtureLights[i];
-                if (l == null) continue;
-                l.color = col;
-                l.intensity = fixtureBaseIntensity[i] * master;
-                if (enabledMask != null && i < enabledMask.Length) l.enabled = enabledMask[i];
+                var f = fixtures[i];
+                if (f == null) continue;
+                if (enabledMask != null && i < enabledMask.Length) f.on = enabledMask[i];
+                f.Apply(master, kelvin);
             }
+        }
+
+        /// <summary>Physikalisch plausibles Licht: lineare Intensität, Farbtemperatur in Kelvin, Abfall 1/r² (eigener Deferred-Shader).</summary>
+        public static void SetPhysicalLighting(bool on, float scale = 6f)
+        {
+            UnityEngine.Rendering.GraphicsSettings.lightsUseLinearIntensity = true;
+            UnityEngine.Rendering.GraphicsSettings.lightsUseColorTemperature = true;
+            Shader.SetGlobalFloat("_StudioPhysicalFalloff", on ? 1f : 0f);
+            Shader.SetGlobalFloat("_StudioFalloffScale", scale);
+        }
+
+        public static readonly string[] ShadowQualityNames = { "Aus", "Niedrig", "Mittel", "Hoch", "Sehr hoch" };
+
+        /// <summary>Schattenqualität für alle Lichter (Auflösung der Schattenkarten, weiche Kanten).</summary>
+        public static void SetShadowQuality(int level)
+        {
+            QualitySettings.shadows = level == 0 ? ShadowQuality.Disable : level == 1 ? ShadowQuality.HardOnly : ShadowQuality.All;
+            QualitySettings.shadowResolution = level <= 1 ? ShadowResolution.Low : level == 2 ? ShadowResolution.Medium : level == 3 ? ShadowResolution.High : ShadowResolution.VeryHigh;
+            QualitySettings.shadowDistance = 35f;
+            QualitySettings.shadowProjection = ShadowProjection.StableFit;
         }
 
         public void SetWhiteWall(Color c, Texture2D tex)

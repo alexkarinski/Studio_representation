@@ -104,6 +104,7 @@ namespace Studio
 
         public void Apply(Preset p, bool instant = false)
         {
+            _povFromWalk = false;
             ExitPov();
             InWalk = false;
             if (instant)
@@ -117,10 +118,13 @@ namespace Studio
             _flyEye = p.eye; _flyTarget = p.target; _flyFov = p.fov; _flyT = 0f;
         }
 
+        bool _povFromWalk;
+
         public void EnterPov(StudioCam cam)
         {
             if (cam == null) return;
-            if (InWalk) ExitWalk();
+            if (InWalk) { _povFromWalk = true; InWalk = false; }
+            else if (!InPov) _povFromWalk = false;
             if (!InPov) _overviewFov = Cam.fieldOfView;
             Pov = cam;
             _flyT = 1f;
@@ -129,7 +133,21 @@ namespace Studio
         public void ExitPov()
         {
             if (!InPov) return;
+            var cam = Pov;
             Pov = null;
+            if (_povFromWalk && cam != null)
+            {
+                // zurück in den Laufmodus: hinter der Kamera stehen, wo der Kameramann steht
+                _povFromWalk = false;
+                var fwd = Vector3.ProjectOnPlane(cam.eye.forward, Vector3.up).normalized;
+                _feet = Clamp(cam.transform.position - fwd * 0.9f);
+                _feet.y = 0;
+                _walkYaw = Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg;
+                _walkPitch = -5f;
+                InWalk = true;
+                Cam.fieldOfView = 70f;
+                return;
+            }
             Cam.fieldOfView = _overviewFov;
             UpdateTransform();
         }

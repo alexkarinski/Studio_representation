@@ -23,6 +23,16 @@ namespace Studio
         public Material imageMaterial;
 
         public bool HasColor => tintMaterials.Count > 0;
+
+        public bool castShadows = true;
+
+        /// <summary>Schattenwurf des Objekts an/aus (z. B. Stativ, das keinen Schatten werfen soll).</summary>
+        public void SetCastShadows(bool on)
+        {
+            castShadows = on;
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+                if (!(r is LineRenderer)) r.shadowCastingMode = on ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
         public bool HasImage => imageMaterial != null;
 
         public void SetColor(Color c)
