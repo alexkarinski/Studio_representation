@@ -85,7 +85,8 @@ namespace Studio
             var m = Input.mousePosition;
             var gui = new Vector2(m.x, Screen.height - m.y) / UiScale;
             if (rig.InPov) return _povBarRect.Contains(gui) || GUIUtility.hotControl != 0;
-            return _panelRect.Contains(gui) || HelpRect.Contains(gui) || (_pipTarget != null && _pipRect.Contains(gui)) || GUIUtility.hotControl != 0;
+            return _panelRect.Contains(gui) || HelpRect.Contains(gui) || _modeBarRect.Contains(gui) || _objBarRect.Contains(gui)
+                || (_pipTarget != null && _pipRect.Contains(gui)) || GUIUtility.hotControl != 0;
         }
 
         float _lastMouseMove = -10f;
@@ -96,6 +97,7 @@ namespace Studio
             _clickConsumed = false;
             if ((Input.mousePosition - _prevMouse).sqrMagnitude > 4f || Input.anyKeyDown) _lastMouseMove = Time.unscaledTime;
             _prevMouse = Input.mousePosition;
+            HandleUndoKeys();
             bool typing = GUIUtility.keyboardControl != 0;
 
             if (rig.InPov)
@@ -139,6 +141,18 @@ namespace Studio
                 }
                 else if (hitProp != null)
                 {
+                    // Doppelklick: Kamera → durchschauen, sonst Ansicht auf das Objekt
+                    if (hitProp == _lastClickProp && Time.unscaledTime - _lastClickTime < 0.35f)
+                    {
+                        var sc = hitProp.GetComponent<StudioCam>();
+                        Select(hitProp);
+                        if (sc != null) rig.EnterPov(sc); else FocusSelected();
+                        _lastClickProp = null;
+                        _clickConsumed = true;
+                        return;
+                    }
+                    _lastClickProp = hitProp; _lastClickTime = Time.unscaledTime;
+                    PushUndo();
                     Select(hitProp);
                     if (FloorPoint(ray, out var fp)) _dragOffset = hitProp.transform.position - fp;
                     _dragging = true;
@@ -201,6 +215,7 @@ namespace Studio
         {
             if (_selected == null) return;
             float speed = (IsShift() ? RotateSpeed / 3f : RotateSpeed) * Time.unscaledDeltaTime;
+            if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.E)) PushUndo();
             if (Input.GetKey(KeyCode.Q)) _selected.transform.Rotate(0, -speed, 0, Space.World);
             if (Input.GetKey(KeyCode.E)) _selected.transform.Rotate(0, speed, 0, Space.World);
         }
@@ -357,9 +372,127 @@ namespace Studio
             if (p != null) _tab = Tab.Objects;
         }
 
+        // ---------- Rückgängig / Wiederholen ----------
+
+        readonly List<string> _undo = new List<string>(), _redo = new List<string>();
+        float _lastUndoPush = -10f;
+
+        /// <summary>Zustand vor einer Änderung merken (mehrere Pushes innerhalb 0,3 s zählen als einer).</summary>
+        void PushUndo()
+        {
+            if (Time.unscaledTime - _lastUndoPush < 0.3f) return;
+            _lastUndoPush = Time.unscaledTime;
+            var json = JsonUtility.ToJson(Capture());
+            if (_undo.Count > 0 && _undo[_undo.Count - 1] == json) return;
+            _undo.Add(json);
+            if (_undo.Count > 40) _undo.RemoveAt(0);
+            _redo.Clear();
+        }
+
+        void Undo()
+        {
+            if (_undo.Count == 0) { Status("Nichts zum Rückgängigmachen"); return; }
+            _redo.Add(JsonUtility.ToJson(Capture()));
+            var json = _undo[_undo.Count - 1];
+            _undo.RemoveAt(_undo.Count - 1);
+            LoadJson(json, true);
+            Status("Rückgängig");
+        }
+
+        void Redo()
+        {
+            if (_redo.Count == 0) { Status("Nichts zum Wiederholen"); return; }
+            _undo.Add(JsonUtility.ToJson(Capture()));
+            var json = _redo[_redo.Count - 1];
+            _redo.RemoveAt(_redo.Count - 1);
+            LoadJson(json, true);
+            Status("Wiederholt");
+        }
+
+        bool Ctrl => Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) || Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+
+        void HandleUndoKeys()
+        {
+            if (GUIUtility.keyboardControl != 0 || !Ctrl) return;
+            if (Input.GetKeyDown(KeyCode.Z)) { if (IsShift()) Redo(); else Undo(); }
+            if (Input.GetKeyDown(KeyCode.Y)) Redo();
+        }
+
+        /// <summary>Ansicht auf ein Objekt zoomen.</summary>
+        void FocusSelected()
+        {
+            if (_selected == null) return;
+            var col = _selected.GetComponent<BoxCollider>();
+            var b = col != null ? col.bounds : new Bounds(_selected.transform.position + Vector3.up * 0.5f, Vector3.one);
+            rig.FocusOn(b.center, b.extents.magnitude * 3.2f + 1f);
+        }
+
+        float _lastClickTime;
+        StudioProp _lastClickProp;
+
+        // ---------- Modusleiste oben + Werkzeugleiste am Objekt ----------
+
+        Rect _modeBarRect, _objBarRect;
+
+        void DrawModeBar()
+        {
+            float w = 560, h = 36;
+            _modeBarRect = new Rect(Mathf.Max(376f, (UiW - w) / 2f), 8, w, h); // nicht unter dem Seitenpanel
+            GUILayout.BeginArea(_modeBarRect, _box);
+            GUILayout.BeginHorizontal();
+            var prev = GUI.backgroundColor;
+            bool overview = !rig.InWalk && !rig.InPov;
+            GUI.backgroundColor = overview ? new Color(0.5f, 0.8f, 1f) : prev;
+            if (GUILayout.Button("Übersicht", GUILayout.Height(22))) { rig.ExitPov(); rig.ExitWalk(); }
+            GUI.backgroundColor = rig.InWalk ? new Color(0.5f, 0.8f, 1f) : prev;
+            if (GUILayout.Button("Laufen (F)", GUILayout.Height(22))) { if (!rig.InWalk) rig.EnterWalk(); }
+            GUI.backgroundColor = rig.InPov ? new Color(0.5f, 0.8f, 1f) : prev;
+            if (GUILayout.Button("Kamera (C)", GUILayout.Height(22))) NextCamera(1);
+            GUI.backgroundColor = prev;
+            GUILayout.Space(10);
+            GUI.enabled = _undo.Count > 0;
+            if (GUILayout.Button(new GUIContent("↶", "Rückgängig (Strg+Z)"), GUILayout.Width(36), GUILayout.Height(22))) Undo();
+            GUI.enabled = _redo.Count > 0;
+            if (GUILayout.Button(new GUIContent("↷", "Wiederholen (Strg+Y)"), GUILayout.Width(36), GUILayout.Height(22))) Redo();
+            GUI.enabled = true;
+            if (GUILayout.Button(new GUIContent("Foto", "Screenshot (P)"), GUILayout.Width(48), GUILayout.Height(22))) StartCoroutine(Screenshot());
+            if (GUILayout.Button(new GUIContent("Ausblenden", "Oberfläche ausblenden (H)"), GUILayout.Height(22))) _hideUI = true;
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+        }
+
+        /// <summary>Kleine Werkzeugleiste direkt über dem ausgewählten Objekt.</summary>
+        void DrawObjectBar()
+        {
+            _objBarRect = Rect.zero;
+            if (_selected == null || rig.InPov || rig.InWalk || !_selected.gameObject.activeInHierarchy) return;
+            var col = _selected.GetComponent<BoxCollider>();
+            var top = col != null ? new Vector3(col.bounds.center.x, col.bounds.max.y, col.bounds.center.z) : _selected.transform.position + Vector3.up;
+            var sp = rig.Cam.WorldToScreenPoint(top + Vector3.up * 0.15f);
+            if (sp.z <= 0) return;
+            var cam = _selected.GetComponent<StudioCam>();
+            float w = cam != null ? 330 : 250, h = 30;
+            var gx = sp.x / UiScale - w / 2f;
+            var gy = (Screen.height - sp.y) / UiScale - h - 6;
+            gx = Mathf.Clamp(gx, 376, UiW - w - 8);
+            gy = Mathf.Clamp(gy, 52, UiH - h - 8);
+            _objBarRect = new Rect(gx, gy, w, h);
+            GUILayout.BeginArea(_objBarRect, _box);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.RepeatButton(new GUIContent("⟲", "Links drehen (Q halten)"), GUILayout.Width(30))) { PushUndo(); _selected.transform.Rotate(0, -RotateSpeed * Time.unscaledDeltaTime, 0, Space.World); }
+            if (GUILayout.RepeatButton(new GUIContent("⟳", "Rechts drehen (E halten)"), GUILayout.Width(30))) { PushUndo(); _selected.transform.Rotate(0, RotateSpeed * Time.unscaledDeltaTime, 0, Space.World); }
+            if (GUILayout.Button(new GUIContent("Kopie", "Strg+D"))) Duplicate();
+            if (GUILayout.Button(new GUIContent("Löschen", "Entf"))) DeleteSelected();
+            if (GUILayout.Button(new GUIContent("Fokus", "Ansicht auf das Objekt (Doppelklick)"))) FocusSelected();
+            if (cam != null && GUILayout.Button("Durchschauen")) rig.EnterPov(cam);
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+        }
+
         void DeleteSelected()
         {
             if (_selected == null) return;
+            PushUndo();
             if (_selected.GetComponent<StudioCam>() == _liveCam) _liveCam = null;
             Destroy(_selected.gameObject);
             Select(null);
@@ -368,6 +501,7 @@ namespace Studio
         void Duplicate()
         {
             if (_selected == null) return;
+            PushUndo();
             var s = _selected;
             var np = PropFactory.Create(s.typeId, builder.set, ClampToRoom(s.transform.position + new Vector3(0.6f, 0, 0.6f)), s.transform.localEulerAngles.y, s.color);
             if (np != null && !string.IsNullOrEmpty(s.imagePath)) np.SetImage(s.imagePath);
@@ -379,6 +513,7 @@ namespace Studio
 
         void Spawn(string id)
         {
+            PushUndo();
             // auf den Boden vor die Ansichtskamera stellen
             var cam = rig.Cam.transform;
             var fwd = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
@@ -557,7 +692,7 @@ namespace Studio
         {
             if (_pipTarget == null || _pipRT == null) return;
             float w = Mathf.Min(420f, UiW * 0.32f), h = w * 9f / 16f;
-            var r = new Rect(UiW - w - 12, 12, w, h);
+            var r = new Rect(UiW - w - 12, 52, w, h);
             Fill(new Rect(r.x - 3, r.y - 3, r.width + 6, r.height + 26), new Color(0, 0, 0, 0.75f));
             GUI.DrawTexture(r, _pipRT, ScaleMode.StretchToFill, false);
             if (_pipTarget == _liveCam)
@@ -775,13 +910,15 @@ namespace Studio
         /// <summary>Rückruf aus dem Browser: Inhalt einer hochgeladenen .json-Variante.</summary>
         public void OnWebProject(string json) => LoadJson(json);
 
-        void LoadJson(string json)
+        void LoadJson(string json) => LoadJson(json, false);
+
+        void LoadJson(string json, bool undo)
         {
             ProjectData data = null;
             try { data = JsonUtility.FromJson<ProjectData>(json); } catch { }
             if (data == null || data.props == null) { Status("Keine gültige Studio-Variante"); return; }
-            rig.ExitWalk();
-            rig.ExitPov();
+            if (!undo) { rig.ExitWalk(); rig.ExitPov(); }
+            if (_carried != null) Drop();
             foreach (var p in AllProps().ToList()) DestroyImmediate(p.gameObject);
             Select(null);
             foreach (var d in data.props)
@@ -836,7 +973,7 @@ namespace Studio
             SetEquipmentVisible(data.showEquipment);
             SetLive(Cameras().FirstOrDefault(c => c.number == data.liveCamera) ?? Cameras().FirstOrDefault());
             ApplyLight();
-            Status("Geladen: " + data.name);
+            if (!undo) Status("Geladen: " + data.name);
         }
 
         // ---------- automatisch speichern / letzte Sitzung ----------
@@ -1022,7 +1159,18 @@ namespace Studio
             GUILayout.EndArea();
 
             DrawPip();
+            DrawObjectBar();
+            DrawModeBar();
             DrawHelp();
+            if (!string.IsNullOrEmpty(GUI.tooltip))
+            {
+                var mp = Event.current.mousePosition;
+                var tr = new Rect(mp.x + 14, mp.y + 18, 230, 22);
+                Fill(tr, new Color(0, 0, 0, 0.85f));
+                GUI.Label(new Rect(tr.x + 6, tr.y + 2, tr.width - 8, tr.height), GUI.tooltip, _small);
+            }
+            // Mausklick ins Panel = mögliche Änderung → für Rückgängig merken
+            if (Event.current.type == EventType.MouseDown && _panelRect.Contains(Event.current.mousePosition)) PushUndo();
         }
 
         // ---------- Sucheransicht ----------
@@ -1623,6 +1771,7 @@ namespace Studio
         /// </summary>
         void ApplyLightPreset(LightPreset preset)
         {
+            PushUndo();
             if (_defaultFixtures == null) return;
             RestoreFixtures(_defaultFixtures);
             var target = StudioBuilder.SetCenter + Vector3.up * 0.5f;

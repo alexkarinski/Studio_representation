@@ -120,6 +120,17 @@ namespace Studio
 
         bool _povFromWalk;
 
+        /// <summary>Ansicht weich auf einen Punkt richten (Doppelklick/„Fokus“), Blickrichtung bleibt.</summary>
+        public void FocusOn(Vector3 point, float distance)
+        {
+            if (InPov || InWalk) return;
+            var dir = (transform.position - _target).normalized;
+            if (dir.sqrMagnitude < 0.01f) dir = new Vector3(0, 0.5f, 1).normalized;
+            if (dir.y < 0.25f) dir = new Vector3(dir.x, 0.35f, dir.z).normalized;
+            _fromEye = transform.position; _fromTarget = _target; _fromFov = Cam.fieldOfView;
+            _flyTarget = point; _flyEye = point + dir * Mathf.Clamp(distance, 1.2f, 12f); _flyFov = Cam.fieldOfView; _flyT = 0f;
+        }
+
         public void EnterPov(StudioCam cam)
         {
             if (cam == null) return;
