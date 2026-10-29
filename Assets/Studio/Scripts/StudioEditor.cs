@@ -71,6 +71,7 @@ namespace Studio
             _selRing.SetActive(false);
 
             _defaultFixtures = CaptureFixtures();
+            _hands = FirstPersonHands.Create(rig.Cam);
             SetupProgramFeed();
             SetLive(Cameras().FirstOrDefault(c => c.number == 2) ?? Cameras().FirstOrDefault());
             StartCoroutine(RestoreLastSession());
@@ -449,8 +450,11 @@ namespace Studio
             _programCam.backgroundColor = Color.black;
         }
 
+        FirstPersonHands _hands;
+
         void LateUpdate()
         {
+            if (_hands != null) _hands.Tick(rig.InWalk, _carried != null, rig.WalkFeet);
             if (_restored && Time.unscaledTime > _nextAutoSave) { _nextAutoSave = Time.unscaledTime + 30f; AutoSave(); }
             UpdatePaths();
             UpdatePip();
@@ -1002,7 +1006,10 @@ namespace Studio
             GUI.color = prev;
         }
 
-        /// <summary>Sucher-Overlay wie am Kameramonitor: 16:9-Ausschnitt, Drittellinien, Statuszeile, Tally.</summary>
+        /// <summary>
+        /// Sucher-Overlay wie am Kameramonitor (Blackmagic-Stil, vgl. Foto vom Set): Statuszeile mit
+        /// RES/FPS/SPEED/IRIS/GAIN/WB und Akku, Drittelraster, Tally. Optional mit Monitorgehäuse.
+        /// </summary>
         void DrawViewfinderHud()
         {
             var cam = rig.Pov;
@@ -1010,38 +1017,66 @@ namespace Studio
             GUI.matrix = Matrix4x4.identity;
             var f = StudioCameraRig.Frame169();
             float sw = Screen.width, sh = Screen.height, s = UiScale;
+            bool live = cam == _liveCam;
 
-            // außerhalb des 16:9-Bildes abdunkeln
-            var dim = new Color(0, 0, 0, 0.85f);
-            if (f.x > 0) { Fill(new Rect(0, 0, f.x, sh), dim); Fill(new Rect(f.xMax, 0, sw - f.xMax, sh), dim); }
-            if (f.y > 0) { Fill(new Rect(0, 0, sw, f.y), dim); Fill(new Rect(0, f.yMax, sw, sh - f.yMax), dim); }
+            if (StudioCameraRig.MonitorView)
+            {
+                // Gehäuse des 7"-Monitors um das Bild, Tally-Leiste oben
+                var housing = new Color(0.06f, 0.065f, 0.075f, 1f);
+                Fill(new Rect(0, 0, sw, f.y), new Color(0.02f, 0.02f, 0.025f, 1f));
+                Fill(new Rect(0, f.yMax, sw, sh - f.yMax), new Color(0.02f, 0.02f, 0.025f, 1f));
+                Fill(new Rect(0, f.y, f.x, f.height), new Color(0.02f, 0.02f, 0.025f, 1f));
+                Fill(new Rect(f.xMax, f.y, sw - f.xMax, f.height), new Color(0.02f, 0.02f, 0.025f, 1f));
+                float bz = 26 * s;
+                var outer = new Rect(f.x - bz, f.y - bz * 2.2f, f.width + bz * 2, f.height + bz * 3.2f);
+                Fill(outer, housing);
+                Fill(new Rect(outer.x + 3 * s, outer.y + 3 * s, outer.width - 6 * s, 2 * s), new Color(1, 1, 1, 0.06f));
+                // schwarzer Bildschirmrand
+                Fill(new Rect(f.x - 6 * s, f.y - 6 * s, f.width + 12 * s, f.height + 12 * s), Color.black);
+                // rote Tally-Leiste (an, wenn live)
+                var tally = new Rect(f.center.x - 60 * s, outer.y + bz * 0.55f, 120 * s, 12 * s);
+                Fill(tally, live ? new Color(1f, 0.12f, 0.1f) : new Color(0.25f, 0.04f, 0.04f));
+                if (live) Fill(new Rect(tally.x - 6 * s, tally.y - 4 * s, tally.width + 12 * s, tally.height + 8 * s), new Color(1f, 0.15f, 0.1f, 0.25f));
+                // Knöpfe unten
+                for (int i = 0; i < 2; i++)
+                    Fill(new Rect(f.center.x + (i == 0 ? -1 : 1) * f.width * 0.32f - 12 * s, outer.yMax - bz * 0.6f, 24 * s, 14 * s), new Color(0.12f, 0.12f, 0.13f));
+            }
+            else
+            {
+                var dim = new Color(0, 0, 0, 0.85f);
+                if (f.x > 0) { Fill(new Rect(0, 0, f.x, sh), dim); Fill(new Rect(f.xMax, 0, sw - f.xMax, sh), dim); }
+                if (f.y > 0) { Fill(new Rect(0, 0, sw, f.y), dim); Fill(new Rect(0, f.yMax, sw, sh - f.yMax), dim); }
+            }
 
-            // Drittellinien
-            var line = new Color(1, 1, 1, 0.35f);
+            // Drittelraster (wie im Kameramonitor)
+            var line = new Color(1, 1, 1, 0.55f);
             for (int i = 1; i <= 2; i++)
             {
-                Fill(new Rect(f.x + f.width * i / 3f, f.y, 1, f.height), line);
-                Fill(new Rect(f.x, f.y + f.height * i / 3f, f.width, 1), line);
+                Fill(new Rect(f.x + f.width * i / 3f, f.y, Mathf.Max(1, s), f.height), line);
+                Fill(new Rect(f.x, f.y + f.height * i / 3f, f.width, Mathf.Max(1, s)), line);
             }
-            // Mittelkreuz
-            var cx = f.center;
-            Fill(new Rect(cx.x - 10 * s, cx.y, 20 * s, 1), line);
-            Fill(new Rect(cx.x, cx.y - 10 * s, 1, 20 * s), line);
 
-            // Statuszeile oben
-            float barH = 28 * s;
-            Fill(new Rect(f.x, f.y, f.width, barH), new Color(0, 0, 0, 0.55f));
-            var hud = new GUIStyle(_hud) { fontSize = Mathf.RoundToInt(12 * s) };
-            var hudBig = new GUIStyle(_hudBig) { fontSize = Mathf.RoundToInt(15 * s) };
-            GUI.Label(new Rect(f.x + 14 * s, f.y, 140 * s, barH), "Kamera " + cam.number, hudBig);
-            string[] cols =
+            // Statuszeile: kleine Bezeichnung über dem Wert
+            float barH = f.height * 0.085f;
+            Fill(new Rect(f.x, f.y, f.width, barH), new Color(0, 0, 0, 0.6f));
+            int fsVal = Mathf.Max(9, Mathf.RoundToInt(barH * 0.36f)), fsKey = Mathf.Max(7, Mathf.RoundToInt(barH * 0.22f));
+            var keyStyle = new GUIStyle(_hud) { fontSize = fsKey, alignment = TextAnchor.LowerLeft, normal = { textColor = new Color(0.75f, 0.75f, 0.75f) } };
+            var valStyle = new GUIStyle(_hud) { fontSize = fsVal, alignment = TextAnchor.UpperLeft };
+            var nameStyle = new GUIStyle(_hudBig) { fontSize = Mathf.RoundToInt(barH * 0.42f) };
+            GUI.Label(new Rect(f.x + barH * 0.4f, f.y, f.width * 0.16f, barH), "Camera " + cam.number, nameStyle);
+            var keys = new[] { "RES", "FPS", "SPEED", "IRIS", "GAIN", "WB", "FOCAL" };
+            var vals = new[] { "1080p", "50", "1/50", "f1.8", "+0dB", Mathf.RoundToInt(_state.lightKelvin / 100f) * 100 + "K", cam.focal.ToString("0") + "mm" };
+            float x0 = f.x + f.width * 0.18f, colW = f.width * 0.095f;
+            for (int i = 0; i < keys.Length; i++)
             {
-                "RES  1080p", "FPS  50", "SHUTTER  1/50", "IRIS  f1.8", "GAIN  +0dB",
-                "WB  " + Mathf.RoundToInt(_state.lightKelvin / 100f) * 100 + "K", "BRENNW.  " + cam.focal.ToString("0") + " mm"
-            };
-            float x0 = f.x + 150 * s, colW = (f.width - 160 * s) / cols.Length;
-            for (int i = 0; i < cols.Length; i++)
-                GUI.Label(new Rect(x0 + i * colW, f.y, colW, barH), cols[i], hud);
+                GUI.Label(new Rect(x0 + i * colW, f.y, colW, barH * 0.45f), keys[i], keyStyle);
+                GUI.Label(new Rect(x0 + i * colW, f.y + barH * 0.45f, colW, barH * 0.55f), vals[i], valStyle);
+            }
+            // Akku-Anzeige
+            var bat = new Rect(f.xMax - barH * 1.7f, f.y + barH * 0.25f, barH * 1.3f, barH * 0.5f);
+            Fill(bat, new Color(1, 1, 1, 0.85f));
+            Fill(new Rect(bat.x + 1.5f * s, bat.y + 1.5f * s, bat.width - 3 * s, bat.height - 3 * s), new Color(0.05f, 0.05f, 0.05f, 1f));
+            GUI.Label(bat, "14.5V", new GUIStyle(_hud) { fontSize = Mathf.Max(7, Mathf.RoundToInt(barH * 0.24f)) });
 
             var rec = cam.GetComponent<CameraMove>();
             if (rec != null && (rec.recording || rec.playing))
@@ -1050,11 +1085,11 @@ namespace Studio
                 var rr = new Rect(f.xMax - 170 * s, f.y + barH + 8 * s, 156 * s, 24 * s);
                 Fill(rr, new Color(0, 0, 0, 0.6f));
                 var t = System.TimeSpan.FromSeconds(rec.time);
-                GUI.Label(rr, (rec.recording ? (blink ? "● REC  " : "   REC  ") : "▶ PLAY  ") + $"{(int)t.TotalMinutes:00}:{t.Seconds:00}.{t.Milliseconds / 100}", hudBig);
+                GUI.Label(rr, (rec.recording ? (blink ? "● REC  " : "   REC  ") : "▶ PLAY  ") + $"{(int)t.TotalMinutes:00}:{t.Seconds:00}.{t.Milliseconds / 100}", new GUIStyle(_hudBig) { fontSize = Mathf.RoundToInt(15 * s) });
             }
 
-            // Tally: rote Umrandung, wenn diese Kamera auf Sendung ist
-            if (cam == _liveCam)
+            // Tally: rote Umrandung im Vollbild, wenn diese Kamera auf Sendung ist
+            if (live && !StudioCameraRig.MonitorView)
             {
                 var red = new Color(0.95f, 0.1f, 0.1f, 0.9f);
                 float t = 4 * s;
@@ -1062,8 +1097,6 @@ namespace Studio
                 Fill(new Rect(f.x, f.yMax - t, f.width, t), red);
                 Fill(new Rect(f.x, f.y, t, f.height), red);
                 Fill(new Rect(f.xMax - t, f.y, t, f.height), red);
-                Fill(new Rect(f.x + f.width / 2 - 34 * s, f.y + barH + 8 * s, 68 * s, 22 * s), red);
-                GUI.Label(new Rect(f.x + f.width / 2 - 34 * s, f.y + barH + 8 * s, 68 * s, 22 * s), "LIVE", hud);
             }
         }
 
@@ -1098,7 +1131,8 @@ namespace Studio
             cam.height = GUILayout.HorizontalSlider(cam.height, cam.minHeight, cam.maxHeight, GUILayout.Width(140));
             GUILayout.Space(16);
             if (GUILayout.Button("Screenshot (P)", GUILayout.Width(120))) StartCoroutine(Screenshot());
-            _state.viewfinderOverlay = GUILayout.Toggle(_state.viewfinderOverlay, " Sucher-Overlay", GUILayout.Width(120));
+            _state.viewfinderOverlay = GUILayout.Toggle(_state.viewfinderOverlay, " Raster/Status", GUILayout.Width(110));
+            StudioCameraRig.MonitorView = GUILayout.Toggle(StudioCameraRig.MonitorView, " Monitor-Ansicht", GUILayout.Width(130));
             if (GUILayout.Button("Oberfläche aus (H)", GUILayout.Width(140))) _hideUI = true;
             GUILayout.EndHorizontal();
             var mvRec = cam.GetComponent<CameraMove>();

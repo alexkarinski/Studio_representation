@@ -135,6 +135,7 @@ namespace Studio
             if (!InPov) return;
             var cam = Pov;
             Pov = null;
+            Cam.rect = new Rect(0, 0, 1, 1);
             if (_povFromWalk && cam != null)
             {
                 // zurück in den Laufmodus: hinter der Kamera stehen, wo der Kameramann steht
@@ -152,10 +153,19 @@ namespace Studio
             UpdateTransform();
         }
 
+        /// <summary>Sucher wie der Kameramonitor: Bild verkleinert im Monitorgehäuse statt Vollbild.</summary>
+        public static bool MonitorView;
+
         /// <summary>16:9-Bildausschnitt in Bildschirmpixeln (GUI-Koordinaten, y nach unten).</summary>
         public static Rect Frame169()
         {
             float w = Screen.width, h = Screen.height;
+            if (MonitorView)
+            {
+                // Monitor oben-mittig, Platz für die Bedienleiste unten
+                float mw = Mathf.Min(w * 0.7f, h * 0.6f * 16f / 9f), mh = mw * 9f / 16f;
+                return new Rect((w - mw) / 2f, h * 0.1f, mw, mh);
+            }
             if (w / h > 16f / 9f) { float fw = h * 16f / 9f; return new Rect((w - fw) / 2, 0, fw, h); }
             float fh = w * 9f / 16f;
             return new Rect(0, (h - fh) / 2, w, fh);
@@ -372,8 +382,16 @@ namespace Studio
             c.Apply();
 
             transform.SetPositionAndRotation(c.eye.position, c.eye.rotation);
-            // der 16:9-Ausschnitt entspricht dem Bild des 2/3"-Sensors
             var f = Frame169();
+            if (MonitorView)
+            {
+                // Kamera rendert nur in den Monitorbereich (Viewport, y nach oben)
+                Cam.rect = new Rect(f.x / Screen.width, 1f - f.yMax / Screen.height, f.width / Screen.width, f.height / Screen.height);
+                Cam.fieldOfView = c.VerticalFov;
+                return;
+            }
+            Cam.rect = new Rect(0, 0, 1, 1);
+            // der 16:9-Ausschnitt entspricht dem Bild des 2/3"-Sensors
             float half = Mathf.Tan(c.VerticalFov * 0.5f * Mathf.Deg2Rad) * Screen.height / Mathf.Max(1f, f.height);
             Cam.fieldOfView = 2f * Mathf.Atan(half) * Mathf.Rad2Deg;
         }
