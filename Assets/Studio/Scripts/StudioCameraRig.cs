@@ -81,6 +81,7 @@ namespace Studio
         {
             if (!InWalk) return;
             InWalk = false;
+            LockMouse(false);
             // Übersicht hinter der aktuellen Position fortsetzen
             var fwd = Quaternion.Euler(0, _walkYaw, 0) * Vector3.forward;
             SetLook(_feet + Vector3.up * EyeHeight - fwd * 2.5f + Vector3.up * 0.8f, _feet + fwd * 1.5f + Vector3.up * 1f);
@@ -105,6 +106,7 @@ namespace Studio
         public void Apply(Preset p, bool instant = false)
         {
             _povFromWalk = false;
+            if (InWalk) LockMouse(false);
             ExitPov();
             InWalk = false;
             if (instant)
@@ -134,7 +136,7 @@ namespace Studio
         public void EnterPov(StudioCam cam)
         {
             if (cam == null) return;
-            if (InWalk) { _povFromWalk = true; InWalk = false; }
+            if (InWalk) { _povFromWalk = true; InWalk = false; LockMouse(false); }
             else if (!InPov) _povFromWalk = false;
             if (!InPov) _overviewFov = Cam.fieldOfView;
             Pov = cam;
@@ -278,16 +280,36 @@ namespace Studio
         }
 
         bool _looking;
+        public static float MouseSensitivity = 1f;
+
+        /// <summary>Maus „gefangen“ (Pointer Lock) — Umsehen wie in Spielen ohne Taste.</summary>
+        public static bool MouseLocked => Cursor.lockState == CursorLockMode.Locked;
+
+        public static void LockMouse(bool on)
+        {
+            Cursor.lockState = on ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !on;
+        }
 
         void UpdateWalk(Vector3 delta, bool blocked)
         {
-            // Umsehen: rechte Maustaste halten (oder Pfeiltasten)
-            if (!blocked && Input.GetMouseButtonDown(1)) _looking = true;
-            if (!Input.GetMouseButton(1)) _looking = false;
-            if (_looking)
+            if (MouseLocked)
             {
-                _walkYaw += delta.x * 0.2f;
-                _walkPitch = Mathf.Clamp(_walkPitch + delta.y * 0.2f, -70f, 70f);
+                // wie in Spielen: Maus bewegen = umsehen
+                _walkYaw += Input.GetAxisRaw("Mouse X") * 2.2f * MouseSensitivity;
+                _walkPitch = Mathf.Clamp(_walkPitch + Input.GetAxisRaw("Mouse Y") * 2.2f * MouseSensitivity, -75f, 75f);
+                _looking = false;
+            }
+            else
+            {
+                // ohne Pointer Lock: rechte Maustaste halten
+                if (!blocked && Input.GetMouseButtonDown(1)) _looking = true;
+                if (!Input.GetMouseButton(1)) _looking = false;
+                if (_looking)
+                {
+                    _walkYaw += delta.x * 0.2f * MouseSensitivity;
+                    _walkPitch = Mathf.Clamp(_walkPitch + delta.y * 0.2f * MouseSensitivity, -75f, 75f);
+                }
             }
             float dt = Time.unscaledDeltaTime;
             bool typing = GUIUtility.keyboardControl != 0;

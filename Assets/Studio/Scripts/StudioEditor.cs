@@ -199,7 +199,7 @@ namespace Studio
                 for (int i = 0; i < StudioCameraRig.Presets.Length && i < 9; i++)
                     if (Input.GetKeyDown(KeyCode.Alpha1 + i)) rig.Apply(StudioCameraRig.Presets[i]);
                 if (Input.GetKeyDown(KeyCode.C)) NextCamera(1);
-                if (Input.GetKeyDown(KeyCode.F)) rig.EnterWalk();
+                if (Input.GetKeyDown(KeyCode.F)) { rig.EnterWalk(); StudioCameraRig.LockMouse(true); }
                 if (Input.GetKeyDown(KeyCode.H)) _hideUI = !_hideUI;
                 if (Input.GetKeyDown(KeyCode.P)) StartCoroutine(Screenshot());
             }
@@ -230,7 +230,13 @@ namespace Studio
             bool typing = GUIUtility.keyboardControl != 0;
             if (!typing)
             {
-                if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.F)) { if (_carried != null) Drop(); else rig.ExitWalk(); }
+                if (Input.GetKeyDown(KeyCode.F)) { if (_carried != null) Drop(); rig.ExitWalk(); return; }
+                // Esc gibt nur die Maus frei (der Browser macht das ohnehin); zweites Esc beendet den Laufmodus
+                if (Input.GetKeyDown(KeyCode.Escape))
+                {
+                    if (_wasLocked || StudioCameraRig.MouseLocked) StudioCameraRig.LockMouse(false);
+                    else { if (_carried != null) Drop(); rig.ExitWalk(); return; }
+                }
                 if (Input.GetKeyDown(KeyCode.H)) _hideUI = !_hideUI;
                 if (Input.GetKeyDown(KeyCode.P)) StartCoroutine(Screenshot());
                 if (Input.GetKeyDown(KeyCode.C)) NextCamera(1);
@@ -241,7 +247,16 @@ namespace Studio
             _nearCam = _carried == null ? NearestCamera(1.8f) : null;
             if (!typing && _nearCam != null && Input.GetKeyDown(KeyCode.E)) { rig.EnterPov(_nearCam); return; }
 
-            if (Input.GetMouseButtonDown(0) && !PointerOverUI())
+            bool lockedNow = StudioCameraRig.MouseLocked;
+            if (!lockedNow && Input.GetMouseButtonDown(0) && !PointerOverUI())
+            {
+                // Klick in die Szene: Maus fangen (Umsehen wie in Spielen)
+                StudioCameraRig.LockMouse(true);
+                _wasLocked = true;
+                return;
+            }
+            _wasLocked = lockedNow;
+            if (lockedNow && Input.GetMouseButtonDown(0))
             {
                 if (_carried != null) Drop();
                 else
@@ -267,6 +282,7 @@ namespace Studio
         }
 
         StudioCam _nearCam;
+        bool _wasLocked;
 
         StudioCam NearestCamera(float maxDist)
         {
@@ -445,7 +461,7 @@ namespace Studio
             GUI.backgroundColor = overview ? new Color(0.5f, 0.8f, 1f) : prev;
             if (GUILayout.Button("Übersicht", GUILayout.Height(22))) { rig.ExitPov(); rig.ExitWalk(); }
             GUI.backgroundColor = rig.InWalk ? new Color(0.5f, 0.8f, 1f) : prev;
-            if (GUILayout.Button("Laufen (F)", GUILayout.Height(22))) { if (!rig.InWalk) rig.EnterWalk(); }
+            if (GUILayout.Button("Laufen (F)", GUILayout.Height(22))) { if (!rig.InWalk) { rig.EnterWalk(); StudioCameraRig.LockMouse(true); } }
             GUI.backgroundColor = rig.InPov ? new Color(0.5f, 0.8f, 1f) : prev;
             if (GUILayout.Button("Kamera (C)", GUILayout.Height(22))) NextCamera(1);
             GUI.backgroundColor = prev;
@@ -1134,6 +1150,12 @@ namespace Studio
             }
 
             if (rig.InWalk) DrawWalkOverlay();
+            if (rig.InWalk && StudioCameraRig.MouseLocked)
+            {
+                // Spielansicht: keine Panels, nur Fadenkreuz und Hinweise
+                _panelRect = _modeBarRect = _objBarRect = Rect.zero;
+                return;
+            }
             GUI.matrix = Matrix4x4.Scale(new Vector3(UiScale, UiScale, 1f));
             float w = 360;
             _panelRect = new Rect(8, 8, w, UiH - 16);
@@ -1333,9 +1355,11 @@ namespace Studio
                 Fill(new Rect(c.x - 170 * s, r0.y, 340 * s, r0.height), new Color(0, 0, 0, 0.6f));
                 GUI.Label(r0, "E: an Kamera " + _nearCam.number + " treten und führen", st);
             }
-            string hint = _carried != null
+            string hint = !StudioCameraRig.MouseLocked
+                ? "Maus frei — in die Szene klicken, um sich wieder umzusehen · F: Laufmodus beenden"
+                : _carried != null
                 ? "Trägt: " + _carried.displayName + "  ·  Q/E drehen  ·  Mausrad näher/weiter  ·  Klick: abstellen"
-                : "WASD gehen · Shift rennen · rechte Maustaste: umsehen · Klick auf Objekt: aufnehmen · F/Esc: Laufmodus beenden";
+                : "Maus: umsehen · WASD gehen · Shift rennen · Klick auf Objekt: aufnehmen · Esc: Maus frei · F: beenden";
             var r = new Rect(0, Screen.height - 40 * s, Screen.width, 30 * s);
             Fill(new Rect(c.x - 380 * s, r.y, 760 * s, r.height), new Color(0, 0, 0, 0.5f));
             GUI.Label(r, hint, st);
@@ -1347,8 +1371,10 @@ namespace Studio
         {
             if (GUILayout.Button(rig.InWalk ? "Laufmodus beenden (F)" : "Durchs Studio laufen (F)", GUILayout.Height(30)))
             {
-                if (rig.InWalk) rig.ExitWalk(); else rig.EnterWalk();
+                if (rig.InWalk) rig.ExitWalk(); else { rig.EnterWalk(); StudioCameraRig.LockMouse(true); }
             }
+            GUILayout.Label("Mausempfindlichkeit im Laufmodus: " + StudioCameraRig.MouseSensitivity.ToString("0.0"), _small);
+            StudioCameraRig.MouseSensitivity = GUILayout.HorizontalSlider(StudioCameraRig.MouseSensitivity, 0.3f, 3f);
             GUILayout.Space(6);
             GUILayout.Label("Ansichten (Tasten 1–7)", _h2);
             for (int i = 0; i < StudioCameraRig.Presets.Length; i++)
