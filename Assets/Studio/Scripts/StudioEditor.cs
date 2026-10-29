@@ -70,6 +70,7 @@ namespace Studio
             _selRing = Geo.Cyl("SelectionRing", transform, Vector3.zero, 0.5f, 0.01f, _selRingMat);
             _selRing.SetActive(false);
 
+            _defaultFixtures = CaptureFixtures();
             SetupProgramFeed();
             SetLive(Cameras().FirstOrDefault(c => c.number == 2) ?? Cameras().FirstOrDefault());
             StartCoroutine(RestoreLastSession());
@@ -855,6 +856,7 @@ namespace Studio
         IEnumerator SetLiveNextFrame()
         {
             yield return null; // alte Objekte sind erst jetzt zerstört
+            _defaultFixtures = CaptureFixtures();
             SetLive(Cameras().FirstOrDefault(c => c.number == 2) ?? Cameras().FirstOrDefault());
         }
 
@@ -1492,6 +1494,14 @@ namespace Studio
                 ApplyLight();
             }
 
+            GUILayout.Label("Lichtstimmung", _h2);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Schattenarm\n(Talkshow)", GUILayout.Height(40))) ApplyLightPreset(LightPreset.Shadowless);
+            if (GUILayout.Button("3-Punkt\n(wie auf Foto)", GUILayout.Height(40))) ApplyLightPreset(LightPreset.Classic);
+            if (GUILayout.Button("Dramatisch\n(1 Führung)", GUILayout.Height(40))) ApplyLightPreset(LightPreset.Dramatic);
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Schatten verschwinden wie im echten Studio: weiches Licht (Softlights, Diffusor), von mehreren Seiten, hoch gehängt, plus Aufheller — jedes Licht hellt die Schatten der anderen auf.", _small);
+            GUILayout.Space(6);
             bool phys = GUILayout.Toggle(_state.physicalFalloff, " Physikalischer Lichtabfall (1/r², Kelvin, Schatten)");
             if (phys != _state.physicalFalloff) { _state.physicalFalloff = phys; ApplyLight(); }
             GUILayout.Label("Schatten (Personen, Möbel, Technik) — bei langsamen Rechnern niedriger stellen:", _small);
@@ -1521,6 +1531,94 @@ namespace Studio
             GUILayout.EndHorizontal();
             if (changed) ApplyLight();
             GUILayout.Label("Stativscheinwerfer und LED-Röhren findest du unter „Objekte → Licht“.", _small);
+        }
+
+        enum LightPreset { Shadowless, Classic, Dramatic }
+
+        List<FixtureData> _defaultFixtures;
+
+        List<FixtureData> CaptureFixtures() => builder.fixtures.Where(f => f != null).Select(f => new FixtureData
+        {
+            number = f.number, on = f.on, x = f.x, z = f.z, drop = f.drop, pan = f.pan, tilt = f.tilt,
+            dimmer = f.dimmer, focus = f.focus, doors = f.doors != null ? (float[])f.doors.angles.Clone() : new float[4],
+            ownKelvin = f.ownKelvin, kelvin = f.kelvin, gel = f.gel, gelName = f.gelName,
+            castShadows = f.castShadows, diffusion = f.diffusion
+        }).ToList();
+
+        void RestoreFixtures(List<FixtureData> list)
+        {
+            foreach (var fd in list)
+            {
+                var f = builder.fixtures.FirstOrDefault(x => x != null && x.number == fd.number);
+                if (f == null) continue;
+                f.on = fd.on; f.x = fd.x; f.z = fd.z; f.drop = fd.drop; f.pan = fd.pan; f.tilt = fd.tilt;
+                f.dimmer = fd.dimmer; f.focus = fd.focus;
+                if (f.doors != null && fd.doors != null && fd.doors.Length == 4) f.doors.angles = (float[])fd.doors.Clone();
+                f.ownKelvin = fd.ownKelvin; f.kelvin = fd.kelvin; f.gel = fd.gel; f.gelName = fd.gelName;
+                f.castShadows = fd.castShadows; f.diffusion = fd.diffusion;
+                f.RefitCollider();
+            }
+        }
+
+        /// <summary>
+        /// Fertige Lichtaufbauten. „Schattenarm“ verteilt die Scheinwerfer im Kreis um die Sitzgruppe,
+        /// hängt sie höher, macht sie weich (Flood + Frost) und ergänzt Aufheller — wie man es im Studio
+        /// für schattenarmes Talkshow-Licht macht.
+        /// </summary>
+        void ApplyLightPreset(LightPreset preset)
+        {
+            if (_defaultFixtures == null) return;
+            RestoreFixtures(_defaultFixtures);
+            var target = StudioBuilder.SetCenter + Vector3.up * 0.5f;
+            var c = new Vector3(StudioBuilder.SetCenter.x, 0, StudioBuilder.SetCenter.z);
+            var wall = new HashSet<int> { 23, 12 };   // bleiben auf der weißen Wand
+
+            switch (preset)
+            {
+                case LightPreset.Shadowless:
+                {
+                    var setLights = builder.fixtures.Where(f => f != null && !wall.Contains(f.number)).ToList();
+                    for (int i = 0; i < setLights.Count; i++)
+                    {
+                        var f = setLights[i];
+                        float a = i * Mathf.PI * 2f / setLights.Count + 0.3f;
+                        float radius = f.number <= 5 ? 4.2f : 3.2f; // Randscheinwerfer als zweiter Ring
+                        f.x = c.x + Mathf.Cos(a) * radius;
+                        f.z = c.z + Mathf.Sin(a) * radius;
+                        f.drop = 1.6f;                               // hoch: kurze Schatten am Boden
+                        f.on = true;
+                        f.dimmer = f.IsFresnel ? 0.75f : 1f;
+                        if (f.IsFresnel) { f.focus = f.maxFocus; f.diffusion = 2; }
+                        else f.diffusion = 1;
+                        for (int k = 0; k < 4 && f.doors != null; k++) f.doors.angles[k] = BarnDoors.OpenAngle;
+                        f.AimAt(target);
+                        f.RefitCollider();
+                    }
+                    _state.ambient = 0.28f;   // Reflexionen von Boden/weißer Wand grob nachgebildet
+                    _state.lightMaster = 0.9f;
+                    Status("Schattenarmes Licht: Scheinwerfer im Kreis, hoch, weich (Flood + Frost), Aufheller");
+                    break;
+                }
+                case LightPreset.Classic:
+                    _state.ambient = 0.16f;
+                    _state.lightMaster = 1f;
+                    Status("3-Punkt-Licht wie auf den Fotos");
+                    break;
+                case LightPreset.Dramatic:
+                    foreach (var f in builder.fixtures)
+                    {
+                        if (f == null) continue;
+                        f.on = f.number == 15 || f.number == 21;
+                        if (f.number == 15) { f.focus = 22f; f.diffusion = 0; f.dimmer = 1f; }
+                        f.AimAt(target);
+                    }
+                    _state.ambient = 0.04f;
+                    _state.lightMaster = 1.2f;
+                    Status("Dramatisch: eine harte Führung + Spitzlicht");
+                    break;
+            }
+            _fixtureOn = builder.fixtures.Select(f => f == null || f.on).ToArray();
+            ApplyLight();
         }
 
         static readonly string[] DoorSteps = { "offen", "¼", "½", "¾", "4/4" };
