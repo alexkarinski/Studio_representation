@@ -814,11 +814,11 @@ namespace Studio
             Geo.Box("MonBezel", mon, new Vector3(0, 0, -0.021f), new Vector3(0.2f, 0.14f, 0.004f), M.MetalBlack);
             Geo.Quad("MonScreen", mon, new Vector3(0, -0.004f, -0.0235f), new Vector2(0.17f, 0.11f), M.Emissive("VfScreen", new Color(0.03f, 0.03f, 0.035f), 0.5f), Vector3.zero);
             // Sonnenblende
-            Geo.Box("HoodT", mon, new Vector3(0, 0.077f, -0.06f), new Vector3(0.21f, 0.006f, 0.08f), M.MetalBlack);
-            Geo.Box("HoodL", mon, new Vector3(-0.104f, 0, -0.06f), new Vector3(0.006f, 0.15f, 0.08f), M.MetalBlack);
-            Geo.Box("HoodR", mon, new Vector3(0.104f, 0, -0.06f), new Vector3(0.006f, 0.15f, 0.08f), M.MetalBlack);
+            Geo.Box("HoodT", mon, new Vector3(0, 0.077f, -0.045f), new Vector3(0.21f, 0.006f, 0.05f), M.MetalBlack);
+            Geo.Box("HoodL", mon, new Vector3(-0.104f, 0, -0.045f), new Vector3(0.006f, 0.15f, 0.05f), M.MetalBlack);
+            Geo.Box("HoodR", mon, new Vector3(0.104f, 0, -0.045f), new Vector3(0.006f, 0.15f, 0.05f), M.MetalBlack);
             // rote Tally-Leiste oben am Monitor (Richtung Kameramann)
-            Geo.Box("MonTally", mon, new Vector3(0, 0.062f, -0.0235f), new Vector3(0.06f, 0.008f, 0.003f), cam.tallyMat);
+            Geo.Box("MonTally", mon, new Vector3(0, 0.0625f, -0.0235f), new Vector3(0.045f, 0.006f, 0.003f), cam.tallyMat);
             Geo.Cyl("KnobL", mon, new Vector3(-0.07f, -0.08f, -0.005f), 0.009f, 0.02f, DarkGrey);
             Geo.Cyl("KnobR", mon, new Vector3(0.07f, -0.08f, -0.005f), 0.009f, 0.02f, DarkGrey);
             cam.viewfinder = mon;

@@ -69,6 +69,19 @@ namespace Studio
             var p = transform.position;
             _feet = Clamp(new Vector3(p.x, 0, p.z));
             _feet.y = 0;
+            // nicht in einem Stativ/Möbel starten: nächsten freien Platz suchen
+            if (Blocked(_feet))
+                for (float r = 0.4f; r < 4f; r += 0.3f)
+                {
+                    bool found = false;
+                    for (int a = 0; a < 12 && !found; a++)
+                    {
+                        var cand = Clamp(_feet + Quaternion.Euler(0, a * 30f, 0) * Vector3.forward * r);
+                        cand.y = 0;
+                        if (!Blocked(cand)) { _feet = cand; found = true; }
+                    }
+                    if (found) break;
+                }
             var fwd = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
             if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
             _walkYaw = Mathf.Atan2(fwd.x, fwd.z) * Mathf.Rad2Deg;
@@ -281,6 +294,7 @@ namespace Studio
 
         bool _looking;
         public static float MouseSensitivity = 1f;
+        int _lockFrames;
 
         /// <summary>Maus „gefangen“ (Pointer Lock) — Umsehen wie in Spielen ohne Taste.</summary>
         public static bool MouseLocked => Cursor.lockState == CursorLockMode.Locked;
@@ -295,13 +309,21 @@ namespace Studio
         {
             if (MouseLocked)
             {
-                // wie in Spielen: Maus bewegen = umsehen
-                _walkYaw += Input.GetAxisRaw("Mouse X") * 2.2f * MouseSensitivity;
-                _walkPitch = Mathf.Clamp(_walkPitch + Input.GetAxisRaw("Mouse Y") * 2.2f * MouseSensitivity, -75f, 75f);
+                // wie in Spielen: Maus bewegen = umsehen. Die ersten Frames nach dem Fangen ignorieren
+                // (Browser liefern dabei oft einen großen Sprung), Sprünge pro Frame begrenzen.
+                if (_lockFrames < 3) _lockFrames++;
+                else
+                {
+                    float mx = Mathf.Clamp(Input.GetAxisRaw("Mouse X"), -12f, 12f);
+                    float my = Mathf.Clamp(Input.GetAxisRaw("Mouse Y"), -12f, 12f);
+                    _walkYaw += mx * 2.2f * MouseSensitivity;
+                    _walkPitch = Mathf.Clamp(_walkPitch + my * 2.2f * MouseSensitivity, -75f, 75f);
+                }
                 _looking = false;
             }
             else
             {
+                _lockFrames = 0;
                 // ohne Pointer Lock: rechte Maustaste halten
                 if (!blocked && Input.GetMouseButtonDown(1)) _looking = true;
                 if (!Input.GetMouseButton(1)) _looking = false;
@@ -417,7 +439,7 @@ namespace Studio
                 // Blick des Kameramanns: hinter der Kamera, auf den Suchermonitor (Studio dahinter sichtbar)
                 var vf = c.viewfinder;
                 var center = vf.TransformPoint(StudioCam.ScreenCenterLocal);
-                var eyePos = vf.TransformPoint(new Vector3(0, 0.035f, -0.27f));
+                var eyePos = vf.TransformPoint(new Vector3(0, 0.04f, -0.34f));
                 transform.SetPositionAndRotation(eyePos, Quaternion.LookRotation(center - eyePos, vf.up));
                 Cam.fieldOfView = 48f;
                 // Bildschirmfläche des Monitors auf den Bildschirm projizieren
