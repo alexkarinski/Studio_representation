@@ -72,6 +72,7 @@ namespace Studio
 
             SetupProgramFeed();
             SetLive(Cameras().FirstOrDefault(c => c.number == 2) ?? Cameras().FirstOrDefault());
+            StartCoroutine(RestoreLastSession());
         }
 
         // ================= Eingabe in 3D =================
@@ -82,7 +83,7 @@ namespace Studio
             var m = Input.mousePosition;
             var gui = new Vector2(m.x, Screen.height - m.y) / UiScale;
             if (rig.InPov) return _povBarRect.Contains(gui) || GUIUtility.hotControl != 0;
-            return _panelRect.Contains(gui) || HelpRect.Contains(gui) || GUIUtility.hotControl != 0;
+            return _panelRect.Contains(gui) || HelpRect.Contains(gui) || (_pipTarget != null && _pipRect.Contains(gui)) || GUIUtility.hotControl != 0;
         }
 
         float _lastMouseMove = -10f;
@@ -317,7 +318,7 @@ namespace Studio
             pos.y = 0;
             float rotY = Mathf.Atan2(-fwd.x, -fwd.z) * Mathf.Rad2Deg; // zur Kamera gedreht
             var p = PropFactory.Create(id, builder.set, pos, rotY);
-            if (p == null) return;
+            if (p == null) { if (PropFactory.LastError != null) Status(PropFactory.LastError); return; }
             var sc = p.GetComponent<StudioCam>();
             if (sc != null) sc.AimAt(StudioBuilder.SetCenter);
             if (EquipmentTypes.Contains(id)) p.gameObject.SetActive(_state.showEquipment);
@@ -364,11 +365,14 @@ namespace Studio
 
         void LateUpdate()
         {
+            if (_restored && Time.unscaledTime > _nextAutoSave) { _nextAutoSave = Time.unscaledTime + 30f; AutoSave(); }
+            UpdatePaths();
+            UpdatePip();
             if (_programCam == null) return;
             bool feed = _state.programOnMonitor && _liveCam != null && _liveCam.gameObject.activeInHierarchy;
             foreach (var p in AllProps())
             {
-                if (p.typeId != "tv_stand" || p.imageMaterial == null || !string.IsNullOrEmpty(p.imagePath)) continue;
+                if ((p.typeId != "tv_stand" && p.typeId != "tv75" && p.typeId != "tv_wall") || p.imageMaterial == null || !string.IsNullOrEmpty(p.imagePath)) continue;
                 var m = p.imageMaterial;
                 if (feed && m.mainTexture != _programRT)
                 {
@@ -385,6 +389,167 @@ namespace Studio
             _programCam.transform.SetPositionAndRotation(_liveCam.eye.position, _liveCam.eye.rotation);
             _programCam.fieldOfView = _liveCam.VerticalFov;
             _programCam.Render();
+        }
+
+        // ---------- Bild-im-Bild + Fahrtwege ----------
+
+        Camera _pipCam;
+        RenderTexture _pipRT;
+        StudioCam _pipTarget;
+        int _pipFrame;
+        readonly Dictionary<CameraMove, LineRenderer> _paths = new Dictionary<CameraMove, LineRenderer>();
+        readonly List<Vector3> _pathPts = new List<Vector3>();
+        Material _pathMat;
+
+        StudioCam PipTarget()
+        {
+            if (!_state.pictureInPicture || rig.InPov || _hideUI) return null;
+            var sel = _selected != null ? _selected.GetComponent<StudioCam>() : null;
+            if (sel != null && sel.gameObject.activeInHierarchy) return sel;
+            return Cameras().FirstOrDefault(c => c.GetComponent<CameraMove>()?.playing == true);
+        }
+
+        void UpdatePip()
+        {
+            _pipTarget = PipTarget();
+            if (_pipTarget == null) return;
+            if (_pipCam == null)
+            {
+                _pipRT = new RenderTexture(640, 360, 24) { name = "BildImBild" };
+                var go = new GameObject("PipCamera");
+                go.transform.SetParent(transform, false);
+                _pipCam = go.AddComponent<Camera>();
+                _pipCam.enabled = false;
+                _pipCam.targetTexture = _pipRT;
+                _pipCam.renderingPath = RenderingPath.DeferredShading;
+                _pipCam.allowHDR = false;
+                _pipCam.nearClipPlane = 0.05f;
+                _pipCam.aspect = 16f / 9f;
+                _pipCam.clearFlags = CameraClearFlags.SolidColor;
+                _pipCam.backgroundColor = Color.black;
+            }
+            if ((_pipFrame++ & 1) == 0) return; // abwechselnd mit dem Programmbild
+            _pipTarget.Apply();
+            _pipCam.transform.SetPositionAndRotation(_pipTarget.eye.position, _pipTarget.eye.rotation);
+            _pipCam.fieldOfView = _pipTarget.VerticalFov;
+            _pipCam.Render();
+        }
+
+        void DrawPip()
+        {
+            if (_pipTarget == null || _pipRT == null) return;
+            float w = Mathf.Min(420f, UiW * 0.32f), h = w * 9f / 16f;
+            var r = new Rect(UiW - w - 12, 12, w, h);
+            Fill(new Rect(r.x - 3, r.y - 3, r.width + 6, r.height + 26), new Color(0, 0, 0, 0.75f));
+            GUI.DrawTexture(r, _pipRT, ScaleMode.StretchToFill, false);
+            if (_pipTarget == _liveCam)
+            {
+                var red = new Color(0.95f, 0.1f, 0.1f);
+                Fill(new Rect(r.x, r.y, r.width, 3), red); Fill(new Rect(r.x, r.yMax - 3, r.width, 3), red);
+                Fill(new Rect(r.x, r.y, 3, r.height), red); Fill(new Rect(r.xMax - 3, r.y, 3, r.height), red);
+            }
+            var mv = _pipTarget.GetComponent<CameraMove>();
+            string t = "Kamera " + _pipTarget.number + " · " + _pipTarget.focal.ToString("0") + " mm" +
+                       (mv != null && mv.keys.Count > 0 ? "  ·  Fahrt " + mv.time.ToString("0.0") + " / " + mv.Duration.ToString("0.0") + " s" : "");
+            GUI.Label(new Rect(r.x + 4, r.yMax + 2, r.width, 20), t, _small);
+            _pipRect = new Rect(r.x - 3, r.y - 3, r.width + 6, r.height + 26);
+        }
+
+        Rect _pipRect;
+
+        void UpdatePaths()
+        {
+            bool show = _state.showPaths && !_hideUI && !rig.InPov;
+            foreach (var mv in builder.set.GetComponentsInChildren<CameraMove>(false))
+            {
+                if (!_paths.TryGetValue(mv, out var lr) || lr == null)
+                {
+                    if (_pathMat == null) _pathMat = StudioMaterials.Transparent("PathLine", new Color(0.3f, 0.9f, 1f, 0.9f));
+                    lr = new GameObject("Fahrtweg").AddComponent<LineRenderer>();
+                    lr.transform.SetParent(transform, false);
+                    lr.sharedMaterial = _pathMat;
+                    lr.widthMultiplier = 0.025f;
+                    lr.numCapVertices = 2;
+                    lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    _paths[mv] = lr;
+                }
+                if (!show || mv.keys.Count < 2) { lr.enabled = false; continue; }
+                mv.SamplePath(_pathPts);
+                lr.enabled = true;
+                lr.positionCount = _pathPts.Count;
+                lr.SetPositions(_pathPts.ToArray());
+                var sel = _selected != null && _selected.gameObject == mv.gameObject;
+                lr.startColor = lr.endColor = sel ? new Color(0.3f, 0.95f, 1f) : new Color(0.3f, 0.95f, 1f, 0.45f);
+            }
+            // Linien gelöschter Kameras entfernen
+            foreach (var dead in _paths.Keys.Where(k => k == null || !k.gameObject.activeInHierarchy).ToList())
+            {
+                if (_paths[dead] != null) _paths[dead].enabled = false;
+                if (dead == null) { Destroy(_paths[dead]?.gameObject); _paths.Remove(dead); }
+            }
+        }
+
+        void PlayAll()
+        {
+            int n = 0;
+            foreach (var mv in builder.set.GetComponentsInChildren<CameraMove>(false))
+                if (mv.CanPlay) { mv.time = 0; mv.Play(); n++; }
+            Status(n > 0 ? n + " Kamerafahrt(en) laufen" : "Noch keine Kamerafahrt geplant (mind. 2 Keyframes)");
+        }
+
+        void StopAll()
+        {
+            foreach (var mv in builder.set.GetComponentsInChildren<CameraMove>(false)) mv.Stop();
+        }
+
+        /// <summary>Planung einer Kamerafahrt: Keyframes setzen, abspielen, Zeitleiste.</summary>
+        void DrawMoveControls(StudioCam cam, bool compact)
+        {
+            var mv = cam.GetComponent<CameraMove>();
+            if (mv == null) return;
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("+ Keyframe", GUILayout.Width(compact ? 90 : 100))) { mv.AddKey(); Status("Keyframe " + mv.keys.Count + " gesetzt"); }
+            GUI.enabled = mv.CanPlay;
+            if (GUILayout.Button(mv.playing ? "❚❚ Pause" : "▶ Abspielen", GUILayout.Width(compact ? 90 : 100))) { if (mv.playing) mv.Pause(); else mv.Play(); }
+            if (GUILayout.Button("■", GUILayout.Width(30))) mv.Stop();
+            GUI.enabled = true;
+            mv.loop = GUILayout.Toggle(mv.loop, " Schleife", GUILayout.Width(80));
+            mv.ease = GUILayout.Toggle(mv.ease, " weich", GUILayout.Width(64));
+            GUILayout.EndHorizontal();
+
+            if (mv.keys.Count > 0)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(mv.time.ToString("0.0") + " / " + mv.Duration.ToString("0.0") + " s", _small, GUILayout.Width(80));
+                float nt = GUILayout.HorizontalSlider(mv.time, 0f, Mathf.Max(0.01f, mv.Duration));
+                if (Mathf.Abs(nt - mv.time) > 0.0001f) { mv.Pause(); mv.time = nt; mv.ApplyAt(nt); }
+                GUILayout.EndHorizontal();
+            }
+            if (compact) return;
+
+            if (mv.keys.Count == 0)
+            {
+                GUILayout.Label("So planst du eine Fahrt: Kamera einstellen (Position, Schwenk, Zoom) → „+ Keyframe“, dann Kamera verschieben/umstellen → wieder „+ Keyframe“ … → „Abspielen“.", _small);
+                return;
+            }
+            for (int i = 0; i < mv.keys.Count; i++)
+            {
+                var k = mv.keys[i];
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("K" + (i + 1) + "  " + k.time.ToString("0.0") + " s · " + k.focal.ToString("0") + " mm", _small, GUILayout.Width(120));
+                if (i > 0)
+                {
+                    float seg = k.time - mv.keys[i - 1].time;
+                    if (GUILayout.Button("−", GUILayout.Width(22))) mv.SetSegmentDuration(i, seg - 0.5f);
+                    if (GUILayout.Button("+", GUILayout.Width(22))) mv.SetSegmentDuration(i, seg + 0.5f);
+                }
+                else GUILayout.Space(48);
+                if (GUILayout.Button("Gehe zu", GUILayout.Width(62))) { mv.Pause(); mv.time = k.time; mv.ApplyAt(k.time); }
+                if (GUILayout.Button("Übernehmen", GUILayout.Width(84))) mv.UpdateKey(i);
+                if (GUILayout.Button("×", GUILayout.Width(22))) { mv.RemoveKey(i); break; }
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.Label("−/+ ändert die Dauer bis zu diesem Keyframe. „Übernehmen“ speichert die aktuelle Einstellung in den Keyframe.", _small);
         }
 
         // ================= Licht / Umgebung =================
@@ -449,6 +614,14 @@ namespace Studio
                 };
                 var c = p.GetComponent<StudioCam>();
                 if (c != null) { d.camNumber = c.number; d.camPan = c.pan; d.camTilt = c.tilt; d.camFocal = c.focal; d.camHeight = c.height; }
+                var mv = p.GetComponent<CameraMove>();
+                if (mv != null) { d.camKeys = mv.keys.Select(k => JsonUtility.FromJson<CamKey>(JsonUtility.ToJson(k))).ToList(); d.camEase = mv.ease; d.camLoop = mv.loop; }
+                var al = p.GetComponent<AimableLight>();
+                if (al != null) { d.lightPan = al.pan; d.lightTilt = al.tilt; d.lightIntensity = al.intensity; }
+                var ha = p.GetComponent<HeightAdjust>();
+                if (ha != null) { d.mountHeight = ha.height; d.screenDiagonal = ha.HasSize ? ha.diagonal : -1f; }
+                var pj = p.GetComponent<ProjectorSim>();
+                if (pj != null) { d.projPan = pj.pan; d.projTilt = pj.tilt; d.projHeight = pj.height; d.projThrow = pj.throwRatio; d.projBrightness = pj.brightness; }
                 return d;
             }).ToList();
             return _state;
@@ -465,8 +638,21 @@ namespace Studio
 
         void Load(string file)
         {
-            var data = JsonUtility.FromJson<ProjectData>(File.ReadAllText(file));
-            if (data == null) { Status("Datei konnte nicht gelesen werden: " + file); return; }
+            string json;
+            try { json = File.ReadAllText(file); }
+            catch { Status("Datei konnte nicht gelesen werden: " + file); return; }
+            LoadJson(json);
+        }
+
+        /// <summary>Rückruf aus dem Browser: Inhalt einer hochgeladenen .json-Variante.</summary>
+        public void OnWebProject(string json) => LoadJson(json);
+
+        void LoadJson(string json)
+        {
+            ProjectData data = null;
+            try { data = JsonUtility.FromJson<ProjectData>(json); } catch { }
+            if (data == null || data.props == null) { Status("Keine gültige Studio-Variante"); return; }
+            rig.ExitWalk();
             rig.ExitPov();
             foreach (var p in AllProps().ToList()) DestroyImmediate(p.gameObject);
             Select(null);
@@ -482,6 +668,20 @@ namespace Studio
                     c.pan = d.camPan; c.tilt = d.camTilt; c.focal = d.camFocal; c.height = d.camHeight;
                     c.Apply();
                 }
+                var mv = p.GetComponent<CameraMove>();
+                if (mv != null && d.camKeys != null) { mv.keys = d.camKeys; mv.ease = d.camEase; mv.loop = d.camLoop; }
+                var al = p.GetComponent<AimableLight>();
+                if (al != null) { al.pan = d.lightPan; al.tilt = d.lightTilt; al.intensity = d.lightIntensity; al.Apply(); }
+                var ha = p.GetComponent<HeightAdjust>();
+                if (ha != null)
+                {
+                    if (d.mountHeight >= 0) ha.height = d.mountHeight;
+                    if (d.screenDiagonal > 0 && ha.HasSize) ha.diagonal = d.screenDiagonal;
+                    ha.Apply();
+                    Geo.FitCollider(p.gameObject);
+                }
+                var pj = p.GetComponent<ProjectorSim>();
+                if (pj != null) { pj.pan = d.projPan; pj.tilt = d.projTilt; pj.height = d.projHeight; pj.throwRatio = d.projThrow; pj.brightness = d.projBrightness; pj.Apply(); }
             }
             _state = data;
             _projectName = data.name;
@@ -496,6 +696,39 @@ namespace Studio
             ApplyLight();
             Status("Geladen: " + data.name);
         }
+
+        // ---------- automatisch speichern / letzte Sitzung ----------
+
+        const string AutoSaveName = "_Letzte Sitzung";
+        float _nextAutoSave = 30f;
+        bool _restored;
+
+        string AutoSaveFile => Path.Combine(ProjectsDir, AutoSaveName + ".json");
+
+        void AutoSave()
+        {
+            try
+            {
+                Directory.CreateDirectory(ProjectsDir);
+                File.WriteAllText(AutoSaveFile, JsonUtility.ToJson(Capture(), true));
+                WebBridge.SyncFS();
+            }
+            catch (System.Exception e) { Debug.LogWarning("Autosave: " + e.Message); }
+        }
+
+        IEnumerator RestoreLastSession()
+        {
+            // im Browser wird IndexedDB erst kurz nach dem Start eingebunden
+            yield return new WaitForSecondsRealtime(1f);
+            _restored = true;
+            if (File.Exists(AutoSaveFile))
+            {
+                Load(AutoSaveFile);
+                Status("Letzte Sitzung wiederhergestellt (Projekt → „Zurücksetzen“ für den Fotostand)");
+            }
+        }
+
+        void OnApplicationQuit() { if (_restored) AutoSave(); }
 
         void ResetToPhotos()
         {
@@ -644,6 +877,7 @@ namespace Studio
                 GUILayout.Label(_status, _small);
             GUILayout.EndArea();
 
+            DrawPip();
             DrawHelp();
         }
 
@@ -716,7 +950,7 @@ namespace Studio
         {
             var cam = rig.Pov;
             if (cam == null) return;
-            float h = 112;
+            float h = 150;
             _povBarRect = new Rect(8, UiH - h - 8, Mathf.Min(UiW - 16, 980), h);
             GUILayout.BeginArea(_povBarRect, _box);
             GUILayout.BeginHorizontal();
@@ -746,7 +980,8 @@ namespace Studio
             _state.viewfinderOverlay = GUILayout.Toggle(_state.viewfinderOverlay, " Sucher-Overlay", GUILayout.Width(120));
             if (GUILayout.Button("Oberfläche aus (H)", GUILayout.Width(140))) _hideUI = true;
             GUILayout.EndHorizontal();
-            GUILayout.Label("Ziehen: schwenken/neigen · Mausrad: zoomen · C: nächste Kamera · Kamera verschieben: in der Übersicht anklicken und ziehen", _small);
+            DrawMoveControls(cam, true);
+            GUILayout.Label("Ziehen/Pfeile: schwenken/neigen · Rad: zoomen · WASD: Kamera fahren · R/F: höher/tiefer · C: nächste Kamera", _small);
             GUILayout.EndArea();
             cam.Apply();
         }
@@ -795,7 +1030,13 @@ namespace Studio
                 if (GUILayout.Button("Live", GUILayout.Width(44))) SetLive(c);
                 GUILayout.EndHorizontal();
             }
-            bool feed = GUILayout.Toggle(_state.programOnMonitor, " Monitor zeigt das Live-Bild");
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("▶ Alle Fahrten abspielen", GUILayout.Height(26))) PlayAll();
+            if (GUILayout.Button("■ Stopp", GUILayout.Height(26), GUILayout.Width(70))) StopAll();
+            GUILayout.EndHorizontal();
+            _state.showPaths = GUILayout.Toggle(_state.showPaths, " Fahrtwege im Studio zeigen");
+            _state.pictureInPicture = GUILayout.Toggle(_state.pictureInPicture, " Kamerabild einblenden (Bild im Bild)");
+            bool feed = GUILayout.Toggle(_state.programOnMonitor, " Monitore/Fernseher ohne eigenes Bild zeigen das Live-Bild");
             if (feed != _state.programOnMonitor) _state.programOnMonitor = feed;
 
             GUILayout.Space(8);
@@ -822,25 +1063,32 @@ namespace Studio
             if (r2 != rigOn) builder.rig.gameObject.SetActive(r2);
         }
 
+        // ---------- Lager (Katalog mit Vorschaubildern) ----------
+
+        IconRenderer _iconRenderer;
+        string _category = "Möbel";
+        string _hoverItem;
+        const string CustomCategory = "Eigene";
+        string _customPath = "";
+
+        IconRenderer Icons => _iconRenderer != null ? _iconRenderer : (_iconRenderer = gameObject.AddComponent<IconRenderer>());
+
         void DrawObjectsTab()
         {
             if (_selected != null) DrawSelected();
-            else GUILayout.Label("Objekt in der Szene anklicken, um es auszuwählen. Mit der Maus ziehen, Q/E drehen, Entf löschen, Strg+D kopieren, Strg beim Ziehen = 25-cm-Raster.", _small);
+            else GUILayout.Label("Objekt in der Szene anklicken, um es auszuwählen. Ziehen verschiebt, Q/E halten dreht, Entf löscht, Strg+D kopiert.", _small);
 
             GUILayout.Space(10);
-            GUILayout.Label("Hinzufügen", _h2);
-            foreach (var group in PropFactory.Catalog.GroupBy(e => e.category))
-            {
-                GUILayout.Label(group.Key, _small);
-                var items = group.ToList();
-                for (int i = 0; i < items.Count; i += 2)
-                {
-                    GUILayout.BeginHorizontal();
-                    for (int j = i; j < Mathf.Min(i + 2, items.Count); j++)
-                        if (GUILayout.Button(items[j].name, GUILayout.Width(160))) Spawn(items[j].id);
-                    GUILayout.EndHorizontal();
-                }
-            }
+            GUILayout.Label("Lager", _h2);
+            var cats = PropFactory.Catalog.Select(e => e.category).Distinct().ToList();
+            cats.Add(CustomCategory);
+            int ci = Mathf.Max(0, cats.IndexOf(_category));
+            ci = GUILayout.SelectionGrid(ci, cats.ToArray(), 4);
+            _category = cats[ci];
+            GUILayout.Space(4);
+
+            if (_category == CustomCategory) DrawCustomItems();
+            else DrawTileGrid(PropFactory.Catalog.Where(e => e.category == _category).Select(e => (e.id, e.name)).ToList());
 
             GUILayout.Space(10);
             GUILayout.Label("Im Studio", _h2);
@@ -852,11 +1100,122 @@ namespace Studio
             }
         }
 
+        /// <summary>Kacheln mit Vorschaubild und Namen; Klick stellt das Objekt ins Studio.</summary>
+        void DrawTileGrid(List<(string id, string name)> items, System.Action<string> onDelete = null)
+        {
+            const int perRow = 3;
+            const float tile = 104f;
+            string hover = null;
+            string toDelete = null;
+            for (int i = 0; i < items.Count; i += perRow)
+            {
+                GUILayout.BeginHorizontal();
+                for (int j = i; j < Mathf.Min(i + perRow, items.Count); j++)
+                {
+                    var (id, name) = items[j];
+                    GUILayout.BeginVertical(GUILayout.Width(tile));
+                    var icon = Icons.Get(id);
+                    var rect = GUILayoutUtility.GetRect(tile, tile, GUILayout.Width(tile), GUILayout.Height(tile));
+                    bool selectedType = _selected != null && _selected.typeId == id;
+                    if (selectedType) Fill(new Rect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4), new Color(0.3f, 0.85f, 1f));
+                    bool clicked = icon != null
+                        ? GUI.Button(rect, new GUIContent(icon, name), GUIStyle.none)
+                        : GUI.Button(rect, new GUIContent("Vorschau …", name), GUI.skin.box);
+                    if (clicked) Spawn(id);
+                    if (rect.Contains(Event.current.mousePosition))
+                    {
+                        hover = name;
+                        Fill(new Rect(rect.x, rect.yMax - 3, rect.width, 3), new Color(0.95f, 0.85f, 0.6f));
+                    }
+                    GUILayout.Label(name, new GUIStyle(_small) { alignment = TextAnchor.UpperCenter, fontSize = 11 }, GUILayout.Width(tile), GUILayout.Height(30));
+                    if (onDelete != null && GUILayout.Button("Löschen", GUILayout.Width(tile))) toDelete = id;
+                    GUILayout.EndVertical();
+                }
+                GUILayout.EndHorizontal();
+            }
+            if (Event.current.type == EventType.Repaint) _hoverItem = hover;
+            GUILayout.Label(_hoverItem != null ? "Klicken, um „" + _hoverItem + "“ ins Studio zu stellen" : "Kachel anklicken, um das Objekt ins Studio zu stellen", _small);
+            if (toDelete != null) onDelete(toDelete);
+        }
+
+        void DrawCustomItems()
+        {
+            GUILayout.Label("Eigenes Objekt hinzufügen", _h2);
+            GUILayout.Label("3D-Modell — " + GlbLoader.FormatHint, _small);
+            GUILayout.Label(CustomItems.ImageHint, _small);
+            if (WebBridge.IsWeb)
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("3D-Modell (.glb) …", GUILayout.Height(26))) WebBridge.PickFile(gameObject.name, nameof(OnWebCustomFile), ".glb");
+                if (GUILayout.Button("Bild als Aufsteller …", GUILayout.Height(26))) WebBridge.PickFile(gameObject.name, nameof(OnWebCustomFile), "image/png,image/jpeg");
+                GUILayout.EndHorizontal();
+                GUILayout.Label("Eigene Dateien bleiben in diesem Browser. Beim Weitergeben einer Variante die Datei mitschicken.", _small);
+            }
+            else
+            {
+                GUILayout.Label("Pfad zur Datei (.glb, .png, .jpg):", _small);
+                _customPath = GUILayout.TextField(_customPath ?? "");
+                GUILayout.BeginHorizontal();
+#if UNITY_EDITOR
+                if (GUILayout.Button("Auswählen…"))
+                {
+                    var p = UnityEditor.EditorUtility.OpenFilePanel("Eigenes Objekt", "", "glb,png,jpg,jpeg");
+                    if (!string.IsNullOrEmpty(p)) _customPath = p;
+                }
+#endif
+                if (GUILayout.Button("Hinzufügen"))
+                {
+                    var path = _customPath.Trim().Trim('"');
+                    if (File.Exists(path)) AddCustom(Path.GetFileName(path), File.ReadAllBytes(path));
+                    else Status("Datei nicht gefunden: " + path);
+                }
+                GUILayout.EndHorizontal();
+            }
+
+            GUILayout.Space(6);
+            var custom = CustomItems.All();
+            if (custom.Count == 0) GUILayout.Label("Noch keine eigenen Objekte.", _small);
+            else DrawTileGrid(custom.Select(id => (id, CustomItems.DisplayName(id))).ToList(), id =>
+            {
+                foreach (var p in AllProps().Where(p => p.typeId == id).ToList()) Destroy(p.gameObject);
+                CustomItems.Delete(id);
+                Icons.Forget(id);
+                Status("Eigenes Objekt gelöscht");
+            });
+        }
+
+        void AddCustom(string fileName, byte[] bytes)
+        {
+            var id = CustomItems.Store(fileName, bytes);
+            Icons.Forget(id);
+            Spawn(id);
+            if (PropFactory.LastError != null)
+            {
+                Status("Konnte nicht geladen werden: " + PropFactory.LastError);
+                CustomItems.Delete(id);
+            }
+        }
+
+        /// <summary>Rückruf aus dem Browser für eigene Objekte: "name|base64".</summary>
+        public void OnWebCustomFile(string payload)
+        {
+            int bar = payload.IndexOf('|');
+            if (bar < 0) return;
+            byte[] bytes;
+            try { bytes = System.Convert.FromBase64String(payload.Substring(bar + 1)); }
+            catch { Status("Datei konnte nicht gelesen werden"); return; }
+            AddCustom(payload.Substring(0, bar), bytes);
+        }
+
         void DrawSelected()
         {
             var t = _selected.transform;
             var cam = _selected.GetComponent<StudioCam>();
+            GUILayout.BeginHorizontal();
+            var selIcon = Icons.Get(_selected.typeId);
+            if (selIcon != null) GUILayout.Label(selIcon, GUILayout.Width(56), GUILayout.Height(56));
             GUILayout.Label("Ausgewählt: " + _selected.displayName + (cam != null ? " " + cam.number : ""), _h2);
+            GUILayout.EndHorizontal();
             var pos = t.localPosition;
             GUILayout.Label($"X: {pos.x:0.00} m", _small);
             pos.x = GUILayout.HorizontalSlider(pos.x, -StudioBuilder.HalfW + 0.3f, StudioBuilder.HalfW - 0.3f);
@@ -886,6 +1245,50 @@ namespace Studio
                 if (GUILayout.Button(cam == _liveCam ? "● Live" : "Live schalten", GUILayout.Height(26))) SetLive(cam);
                 GUILayout.EndHorizontal();
                 if (GUILayout.Button("Auf die Sitzgruppe ausrichten")) cam.AimAt(StudioBuilder.SetCenter);
+
+                GUILayout.Space(6);
+                GUILayout.Label("Kamerafahrt planen", _h2);
+                DrawMoveControls(cam, false);
+            }
+
+            var ha = _selected.GetComponent<HeightAdjust>();
+            if (ha != null)
+            {
+                GUILayout.Space(6);
+                GUILayout.Label("Bildschirm", _h2);
+                if (ha.HasSize)
+                {
+                    var m = ha.ScreenMeters;
+                    GUILayout.Label($"Bildschirmgröße: {ha.diagonal:0}\"  ({m.x * 100:0} × {m.y * 100:0} cm Bildfläche)", _small);
+                    float nd = Mathf.Round(GUILayout.HorizontalSlider(ha.diagonal, ha.minDiagonal, ha.maxDiagonal));
+                    GUILayout.BeginHorizontal();
+                    foreach (var inch in new[] { 43, 55, 65, 75, 85, 98 })
+                        if (GUILayout.Button(inch + "\"")) nd = inch;
+                    GUILayout.EndHorizontal();
+                    if (Mathf.Abs(nd - ha.diagonal) > 0.1f) { ha.diagonal = nd; ha.Apply(); Geo.FitCollider(_selected.gameObject); }
+                }
+                GUILayout.Label($"{ha.label}: {ha.height:0.00} m (Bildmitte)", _small);
+                float nh = GUILayout.HorizontalSlider(ha.height, ha.minHeight, ha.maxHeight);
+                if (Mathf.Abs(nh - ha.height) > 0.001f) { ha.height = nh; ha.Apply(); Geo.FitCollider(_selected.gameObject); }
+            }
+
+            var pj = _selected.GetComponent<ProjectorSim>();
+            if (pj != null)
+            {
+                GUILayout.Space(6);
+                GUILayout.Label("Beamer", _h2);
+                GUILayout.Label($"Schwenk: {pj.pan:0}°", _small);
+                pj.pan = GUILayout.HorizontalSlider(pj.pan, -180f, 180f);
+                GUILayout.Label($"Neigung: {pj.tilt:0}°", _small);
+                pj.tilt = GUILayout.HorizontalSlider(pj.tilt, -60f, 60f);
+                GUILayout.Label($"Höhe: {pj.height:0.00} m", _small);
+                pj.height = GUILayout.HorizontalSlider(pj.height, pj.minHeight, pj.maxHeight);
+                GUILayout.Label($"Bildgröße (Projektionsverhältnis {pj.throwRatio:0.00}:1 — kleiner = größeres Bild)", _small);
+                pj.throwRatio = GUILayout.HorizontalSlider(pj.throwRatio, 0.4f, 3f);
+                GUILayout.Label($"Helligkeit: {pj.brightness * 100:0} %", _small);
+                pj.brightness = GUILayout.HorizontalSlider(pj.brightness, 0.1f, 1.5f);
+                pj.Apply();
+                GUILayout.Label("Das Bild landet auf der Fläche, auf die der Beamer zeigt (Wand, weiße Wand, Vorhang, Boden oder ein Objekt). Bild unten hochladen.", _small);
             }
 
             var spot = _selected.GetComponent<AimableLight>();
@@ -915,7 +1318,7 @@ namespace Studio
             }
             if (_selected.HasImage)
             {
-                GUILayout.Label("Bild auf Bildschirm/Wand/Rahmen:", _small);
+                GUILayout.Label(_selected.GetComponent<ProjectorSim>() != null ? "Projiziertes Bild (PNG/JPG, z. B. 1920×1080):" : "Bild auf dem Bildschirm (PNG/JPG, am besten 16:9, z. B. 1920×1080):", _small);
                 var prop = _selected;
                 DrawImagePicker(ref _propImagePath, path =>
                 {
@@ -976,13 +1379,18 @@ namespace Studio
             if (WebBridge.IsWeb)
             {
                 GUILayout.Label("Varianten werden in diesem Browser gespeichert. Die Datei kann heruntergeladen und weitergegeben werden.", _small);
-                if (GUILayout.Button("Variante herunterladen (.json)"))
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Herunterladen (.json)"))
                     WebBridge.Download(SafeName(_projectName) + ".json", System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(Capture(), true)), "application/json");
+                if (GUILayout.Button("Variante öffnen (.json)…"))
+                    WebBridge.PickText(gameObject.name, nameof(OnWebProject), ".json,application/json");
+                GUILayout.EndHorizontal();
             }
             else GUILayout.Label("Ordner: " + ProjectsDir, _small);
 
             GUILayout.Space(8);
             GUILayout.Label("Gespeicherte Varianten", _h2);
+            GUILayout.Label("Alles wird zusätzlich alle 30 s als „Letzte Sitzung“ gesichert und beim nächsten Öffnen wiederhergestellt.", _small);
             if (Directory.Exists(ProjectsDir))
                 foreach (var f in Directory.GetFiles(ProjectsDir, "*.json").OrderBy(f => f))
                     if (GUILayout.Button("Öffnen: " + Path.GetFileNameWithoutExtension(f))) Load(f);

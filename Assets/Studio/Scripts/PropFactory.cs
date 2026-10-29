@@ -71,6 +71,9 @@ namespace Studio
             new Entry { id = "neon_ring",   name = "Neonring",      category = "Deko",   defaultColor = new Color(1.00f, 0.25f, 0.60f), build = NeonRing },
             new Entry { id = "floor_lamp",  name = "Stehlampe",               category = "Licht",   defaultColor = new Color(1.00f, 0.80f, 0.55f), build = FloorLamp },
             new Entry { id = "led_wall",    name = "LED-Wand 4×2,25 m",   category = "Technik", defaultColor = new Color(0.30f, 0.55f, 0.90f), build = LedWall },
+            new Entry { id = "tv75",        name = "Fernseher auf Standfuß", category = "Technik", defaultColor = new Color(0.45f, 0.75f, 0.85f), build = Tv75 },
+            new Entry { id = "tv_wall",     name = "Fernseher an der Wand", category = "Technik", defaultColor = new Color(0.45f, 0.75f, 0.85f), build = TvWall },
+            new Entry { id = "projector",   name = "Beamer auf Stativ",     category = "Technik", defaultColor = Color.white, build = ProjectorOnStand },
             new Entry { id = "tv_stand",    name = "Monitor auf Rollständer",    category = "Technik", defaultColor = new Color(0.45f, 0.75f, 0.85f), build = TvStand },
             new Entry { id = "studio_cam",  name = "Kamera auf Stativ",    category = "Technik", defaultColor = new Color(0.08f, 0.08f, 0.09f), build = TripodCamera },
             new Entry { id = "pedestal_cam",name = "Kamera auf Pumpstativ", category = "Technik", defaultColor = new Color(0.75f, 0.76f, 0.78f), build = PedestalCamera },
@@ -91,6 +94,7 @@ namespace Studio
 
         public static StudioProp Create(string id, Transform parent, Vector3 pos, float rotY, Color? color = null)
         {
+            if (CustomItems.IsCustom(id)) return CreateCustom(id, parent, pos, rotY, color ?? Color.white);
             var e = Find(id);
             if (e == null) { Debug.LogWarning("Unbekanntes Objekt: " + id); return null; }
             var root = new GameObject(e.name);
@@ -110,6 +114,32 @@ namespace Studio
             prop.color = c;
             var cam = root.GetComponent<StudioCam>();
             if (cam != null) cam.SetNumber(parent.GetComponentsInChildren<StudioCam>(true).Length);
+            Geo.FitCollider(root);
+            root.transform.localPosition = pos;
+            root.transform.localRotation = Quaternion.Euler(0, rotY, 0);
+            return prop;
+        }
+
+        /// <summary>Letzte Fehlermeldung beim Laden eines eigenen Objekts (für die Oberfläche).</summary>
+        public static string LastError;
+
+        static StudioProp CreateCustom(string id, Transform parent, Vector3 pos, float rotY, Color c)
+        {
+            var root = new GameObject(CustomItems.DisplayName(id));
+            root.transform.SetParent(parent, false);
+            var prop = root.AddComponent<StudioProp>();
+            prop.typeId = id;
+            prop.displayName = CustomItems.DisplayName(id);
+            try { CustomItems.Build(id, root.transform, prop); LastError = null; }
+            catch (Exception ex)
+            {
+                LastError = ex.Message;
+                Debug.LogWarning("Eigenes Objekt: " + ex.Message);
+                UnityEngine.Object.Destroy(root);
+                return null;
+            }
+            if (c != Color.white) prop.SetColor(c);
+            prop.color = c;
             Geo.FitCollider(root);
             root.transform.localPosition = pos;
             root.transform.localRotation = Quaternion.Euler(0, rotY, 0);
@@ -615,9 +645,112 @@ namespace Studio
             Geo.Box("Foot", r, new Vector3(0, 0.06f, 0), new Vector3(0.9f, 0.04f, 0.5f), M.MetalBlack);
             for (int i = 0; i < 4; i++)
                 Geo.Cyl("Wheel", r, new Vector3(((i & 1) == 0 ? -0.4f : 0.4f), 0.035f, ((i & 2) == 0 ? -0.22f : 0.22f)), 0.035f, 0.03f, M.Rubber, new Vector3(0, 0, 90));
-            Geo.Box("Column", r, new Vector3(0, 0.75f, -0.03f), new Vector3(0.22f, 1.4f, 0.08f), M.MetalBlack);
-            Geo.Box("Bezel", r, new Vector3(0, 1.55f, 0), new Vector3(1.25f, 0.74f, 0.06f), M.MetalBlack);
-            Geo.Quad("Screen", r, new Vector3(0, 1.55f, 0.031f), new Vector2(1.2f, 0.68f), ScreenMat(p, c), new Vector3(0, 180, 0));
+            Geo.Box("Column", r, new Vector3(0, 0.95f, -0.03f), new Vector3(0.22f, 1.8f, 0.08f), M.MetalBlack);
+            var screen = Geo.Group("ScreenMount", r, new Vector3(0, 1.55f, 0)).transform;
+            Geo.Box("Bezel", screen, Vector3.zero, new Vector3(1.25f, 0.74f, 0.06f), M.MetalBlack);
+            Geo.Quad("Screen", screen, new Vector3(0, 0, 0.031f), new Vector2(1.2f, 0.68f), ScreenMat(p, c), new Vector3(0, 180, 0));
+            AddHeight(r, screen, 1.55f, 0.9f, 1.75f, "Bildschirmhöhe");
+            return r.gameObject;
+        }
+
+        /// <summary>Großer Fernseher 75" auf Standfuß (Höhe verstellbar).</summary>
+        static GameObject Tv75(Transform r, StudioProp p, Color c)
+        {
+            const float w = 1.68f, h = 0.96f;
+            Geo.Box("Base", r, new Vector3(0, 0.015f, 0), new Vector3(0.8f, 0.03f, 0.45f), M.MetalBlack);
+            Geo.Box("PoleL", r, new Vector3(-0.2f, 0.85f, -0.06f), new Vector3(0.05f, 1.7f, 0.05f), M.MetalBlack);
+            Geo.Box("PoleR", r, new Vector3(0.2f, 0.85f, -0.06f), new Vector3(0.05f, 1.7f, 0.05f), M.MetalBlack);
+            var screen = Geo.Group("ScreenMount", r, new Vector3(0, 1.25f, 0)).transform;
+            Geo.Box("Body", screen, new Vector3(0, 0, -0.02f), new Vector3(w + 0.02f, h + 0.02f, 0.05f), M.MetalBlack);
+            Geo.Quad("Screen", screen, new Vector3(0, 0, 0.0055f), new Vector2(w, h), ScreenMat(p, c), new Vector3(0, 180, 0));
+            AddHeight(r, screen, 1.25f, 0.7f, 1.65f, "Bildschirmhöhe", 75f);
+            return r.gameObject;
+        }
+
+        /// <summary>Fernseher 55" an der Wand (zum Platzieren vor einer Wand; Höhe verstellbar).</summary>
+        static GameObject TvWall(Transform r, StudioProp p, Color c)
+        {
+            const float w = 1.23f, h = 0.71f;
+            var screen = Geo.Group("ScreenMount", r, new Vector3(0, 1.5f, 0)).transform;
+            Geo.Box("Mount", screen, new Vector3(0, 0, -0.06f), new Vector3(0.4f, 0.3f, 0.04f), M.MetalBlack);
+            Geo.Box("Body", screen, new Vector3(0, 0, -0.02f), new Vector3(w + 0.02f, h + 0.02f, 0.04f), M.MetalBlack);
+            Geo.Quad("Screen", screen, new Vector3(0, 0, 0.0005f), new Vector2(w, h), ScreenMat(p, c), new Vector3(0, 180, 0));
+            AddHeight(r, screen, 1.5f, 0.6f, 3.2f, "Höhe an der Wand", 55f);
+            return r.gameObject;
+        }
+
+        static void AddHeight(Transform r, Transform target, float h, float min, float max, string label, float diagonalInch = 0f)
+        {
+            var ha = r.gameObject.AddComponent<HeightAdjust>();
+            ha.target = target; ha.height = h; ha.minHeight = min; ha.maxHeight = max; ha.label = label;
+            if (diagonalInch > 0)
+            {
+                // Bildschirm-Gruppe skalieren; Modell ist für diagonalInch gebaut
+                var size = Geo.Group("ScreenSize", target, Vector3.zero).transform;
+                while (target.childCount > 1) target.GetChild(0).SetParent(size, true);
+                ha.sizeTarget = size; ha.baseDiagonal = diagonalInch; ha.diagonal = diagonalInch;
+            }
+            ha.Apply();
+        }
+
+        static Texture2D _testPattern;
+        /// <summary>Testbild (Farbbalken) für den Beamer, bis ein eigenes Bild geladen ist.</summary>
+        static Texture2D TestPattern()
+        {
+            if (_testPattern != null) return _testPattern;
+            const int w = 320, h = 180;
+            _testPattern = new Texture2D(w, h, TextureFormat.RGBA32, true) { name = "Testbild", wrapMode = TextureWrapMode.Clamp };
+            var bars = new[] { Color.white, Color.yellow, Color.cyan, Color.green, Color.magenta, Color.red, Color.blue };
+            var px = new Color[w * h];
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                Color col = y > h / 3 ? bars[x * bars.Length / w] * 0.85f : new Color(0.1f, 0.1f, 0.1f);
+                if (y <= h / 3 && x * 4 / w % 2 == 1) col = new Color(0.25f, 0.25f, 0.25f);
+                if (x < 2 || y < 2 || x > w - 3 || y > h - 3) col = Color.white;
+                col.a = 1f;
+                px[y * w + x] = col;
+            }
+            _testPattern.SetPixels(px);
+            _testPattern.Apply(true);
+            return _testPattern;
+        }
+
+        /// <summary>Beamer auf Stativ mit Ablage; projiziert auf die Fläche, auf die er zeigt.</summary>
+        static GameObject ProjectorOnStand(Transform r, StudioProp p, Color c)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                float a = Mathf.PI / 2 + i * Mathf.PI * 2 / 3;
+                var foot = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 0.4f;
+                foot.y = 0.01f;
+                Geo.Rod("Leg", r, new Vector3(0, 0.55f, 0), foot, 0.011f, M.MetalBlack);
+            }
+            Geo.Rod("Pole", r, new Vector3(0, 0.3f, 0), new Vector3(0, 0.6f, 0), 0.016f, M.MetalBlack);
+            var ps = r.gameObject.AddComponent<ProjectorSim>();
+            ps.panPivot = Geo.Group("PanPivot", r, new Vector3(0, 1.1f, 0)).transform;
+            Geo.Box("Tray", ps.panPivot, new Vector3(0, 0.0f, 0), new Vector3(0.36f, 0.015f, 0.3f), M.MetalBlack);
+            ps.tiltPivot = Geo.Group("TiltPivot", ps.panPivot, new Vector3(0, 0.02f, 0)).transform;
+            var body = M.Get("ProjectorBody", new Color(0.88f, 0.88f, 0.86f), 0.4f);
+            Geo.Box("Body", ps.tiltPivot, new Vector3(0, 0.055f, 0), new Vector3(0.32f, 0.1f, 0.26f), body);
+            Geo.Cyl("LensRing", ps.tiltPivot, new Vector3(0.07f, 0.055f, 0.135f), 0.04f, 0.02f, M.MetalBlack, new Vector3(90, 0, 0));
+            Geo.Cyl("Lens", ps.tiltPivot, new Vector3(0.07f, 0.055f, 0.146f), 0.032f, 0.004f, M.Emissive("ProjectorLens", new Color(0.9f, 0.95f, 1f), 3f), new Vector3(90, 0, 0));
+            Geo.Box("Vent", ps.tiltPivot, new Vector3(-0.07f, 0.055f, 0.131f), new Vector3(0.12f, 0.05f, 0.004f), M.MetalBlack);
+            ps.lensPoint = Geo.Group("LensPoint", ps.tiltPivot, new Vector3(0.07f, 0.055f, 0.16f)).transform;
+            ps.SetColumn(Geo.Cyl("Column", r, new Vector3(0, 0.8f, 0), 0.013f, 0.6f, M.MetalGrey).transform, 0.55f);
+
+            var mat = new Material(Shader.Find("Sprites/Default")) { name = "Projektion", mainTexture = TestPattern() };
+            mat.renderQueue = 3050;
+            ps.projectionMat = mat;
+            p.imageMaterial = mat;
+
+            var l = new GameObject("Spill").AddComponent<Light>();
+            l.transform.SetParent(ps.lensPoint, false);
+            l.type = LightType.Spot;
+            l.spotAngle = 40; l.innerSpotAngle = 25; l.range = 12f;
+            l.color = new Color(0.9f, 0.93f, 1f);
+            ps.spill = l;
+            ps.Apply();
             return r.gameObject;
         }
 
@@ -704,6 +837,7 @@ namespace Studio
 
             var eye = Geo.Group("Eye", tilt, new Vector3(0, 0.1f, 0.46f)).transform;
             cam.eye = eye;
+            r.gameObject.AddComponent<CameraMove>();
             return cam;
         }
 

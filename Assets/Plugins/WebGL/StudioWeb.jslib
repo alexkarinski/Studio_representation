@@ -1,11 +1,11 @@
 // Мост браузер <-> Unity для веб-версии: выбор картинки с диска, скачивание файлов, сохранение IndexedDB.
 mergeInto(LibraryManager.library, {
-  StudioPickImage: function (goName, method) {
+  StudioPickImage: function (goName, method, accept) {
     var go = UTF8ToString(goName);
     var m = UTF8ToString(method);
     var input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/png,image/jpeg';
+    input.accept = UTF8ToString(accept);
     input.style.display = 'none';
     input.onchange = function () {
       var f = input.files && input.files[0];
@@ -16,6 +16,25 @@ mergeInto(LibraryManager.library, {
         SendMessage(go, m, f.name + '|' + b64);
       };
       r.readAsDataURL(f);
+      input.remove();
+    };
+    document.body.appendChild(input);
+    input.click();
+  },
+
+  StudioPickText: function (goName, method, accept) {
+    var go = UTF8ToString(goName);
+    var m = UTF8ToString(method);
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = UTF8ToString(accept);
+    input.style.display = 'none';
+    input.onchange = function () {
+      var f = input.files && input.files[0];
+      if (!f) return;
+      var r = new FileReader();
+      r.onload = function () { SendMessage(go, m, String(r.result)); };
+      r.readAsText(f);
       input.remove();
     };
     document.body.appendChild(input);

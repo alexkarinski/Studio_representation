@@ -98,6 +98,7 @@ namespace Studio
             Cam.backgroundColor = Color.black;
             Cam.nearClipPlane = 0.05f;
             Cam.farClipPlane = 200f;
+            Cam.cullingMask &= ~(1 << IconRenderer.Layer); // Vorschau-Bühne nie zeigen
             Apply(Presets[0], instant: true);
         }
 
@@ -324,12 +325,31 @@ namespace Studio
             if (GUIUtility.keyboardControl == 0)
             {
                 float dt = Time.unscaledDeltaTime;
-                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) c.tilt += 20f * dt;
-                if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) c.tilt -= 20f * dt;
-                if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) c.pan += 25f * dt;
-                if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) c.pan -= 25f * dt;
+                // Pfeiltasten: Schwenk/Neigung · WASD: Kamera fahren (Dolly/Truck) · R/F: Höhe · +/-: Zoom
+                if (Input.GetKey(KeyCode.UpArrow)) c.tilt += 20f * dt;
+                if (Input.GetKey(KeyCode.DownArrow)) c.tilt -= 20f * dt;
+                if (Input.GetKey(KeyCode.RightArrow)) c.pan += 25f * dt;
+                if (Input.GetKey(KeyCode.LeftArrow)) c.pan -= 25f * dt;
+                if (Input.GetKey(KeyCode.R)) c.height += 0.3f * dt;
+                if (Input.GetKey(KeyCode.F)) c.height -= 0.3f * dt;
                 if (Input.GetKey(KeyCode.KeypadPlus) || Input.GetKey(KeyCode.Equals)) c.focal *= 1f + dt;
                 if (Input.GetKey(KeyCode.KeypadMinus) || Input.GetKey(KeyCode.Minus)) c.focal /= 1f + dt;
+
+                var fwd = Vector3.ProjectOnPlane(c.eye.forward, Vector3.up).normalized;
+                var rgt = Vector3.Cross(Vector3.up, fwd);
+                var mv = Vector3.zero;
+                if (Input.GetKey(KeyCode.W)) mv += fwd;
+                if (Input.GetKey(KeyCode.S)) mv -= fwd;
+                if (Input.GetKey(KeyCode.D)) mv += rgt;
+                if (Input.GetKey(KeyCode.A)) mv -= rgt;
+                if (mv.sqrMagnitude > 0)
+                {
+                    bool fast = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+                    var p = c.transform.position + mv.normalized * (fast ? 1.2f : 0.5f) * dt; // Dolly-Tempo
+                    p.x = Mathf.Clamp(p.x, BoundsMin.x, BoundsMax.x);
+                    p.z = Mathf.Clamp(p.z, BoundsMin.z, BoundsMax.z);
+                    c.transform.position = p;
+                }
             }
             c.Apply();
 

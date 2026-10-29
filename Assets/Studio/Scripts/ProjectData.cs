@@ -21,6 +21,8 @@ namespace Studio
         public int liveCamera = 2;
         public bool programOnMonitor = true;
         public bool viewfinderOverlay = true;
+        public bool showPaths = true;
+        public bool pictureInPicture = true;
     }
 
     [Serializable]
@@ -34,7 +36,13 @@ namespace Studio
         // nur für Studiokameras
         public int camNumber;
         public float camPan, camTilt, camFocal = 24f, camHeight = 1.3f;
+        public List<CamKey> camKeys = new List<CamKey>();
+        public bool camEase = true, camLoop;
         // nur für Stativscheinwerfer
         public float lightPan, lightTilt = -20f, lightIntensity = 1.5f;
+        // höhenverstellbare Bildschirme / Fernseher
+        public float mountHeight = -1f, screenDiagonal = -1f;
+        // Beamer
+        public float projPan, projTilt = 5f, projHeight = 1.1f, projThrow = 1.4f, projBrightness = 1f;
     }
 }
