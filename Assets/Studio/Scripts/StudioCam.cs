@@ -17,6 +17,10 @@ namespace Studio
         public float minHeight = 0.9f, maxHeight = 1.8f;
 
         public Transform panPivot, tiltPivot, eye, column;
+        /// <summary>Sucher-Monitor; Bildschirmmitte liegt bei ScreenCenterLocal, Bild (16:9) in ImageSizeLocal.</summary>
+        public Transform viewfinder;
+        public static readonly Vector3 ScreenCenterLocal = new Vector3(0, -0.004f, -0.024f);
+        public static readonly Vector2 ScreenSizeLocal = new Vector2(0.17f, 0.11f);
         public Material tallyMat;
         public Renderer[] numberTags = new Renderer[0];
         public bool live;

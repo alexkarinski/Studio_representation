@@ -805,18 +805,23 @@ namespace Studio
             Geo.Box("Tally", tilt, new Vector3(0, 0.278f, 0.1f), new Vector3(0.05f, 0.012f, 0.02f), cam.tallyMat);
             cam.SetLive(false);
 
-            // Sucher-Monitor (7") am Arm, links oben, mit Sonnenblende
-            Geo.Rod("MonArm1", tilt, new Vector3(-0.02f, 0.27f, 0.02f), new Vector3(-0.13f, 0.36f, 0.0f), 0.012f, M.MetalBlack);
-            Geo.Rod("MonArm2", tilt, new Vector3(-0.13f, 0.36f, 0.0f), new Vector3(-0.2f, 0.38f, -0.03f), 0.012f, M.Get("ArmGreen", new Color(0.15f, 0.45f, 0.3f), 0.4f, 0.4f));
-            var mon = Geo.Group("Viewfinder", tilt, new Vector3(-0.22f, 0.4f, -0.05f), 0).transform;
-            mon.localRotation = Quaternion.Euler(-8, -15, 0);
-            Geo.Box("MonBody", mon, Vector3.zero, new Vector3(0.2f, 0.14f, 0.045f), MonitorBlue);
-            Geo.Quad("MonScreen", mon, new Vector3(0, 0, -0.024f), new Vector2(0.17f, 0.11f), M.Emissive("VfScreen", new Color(0.35f, 0.4f, 0.6f), 0.8f), Vector3.zero);
-            Geo.Box("HoodT", mon, new Vector3(0, 0.075f, -0.06f), new Vector3(0.2f, 0.006f, 0.08f), M.MetalBlack);
-            Geo.Box("HoodL", mon, new Vector3(-0.1f, 0, -0.06f), new Vector3(0.006f, 0.14f, 0.08f), M.MetalBlack);
-            Geo.Box("HoodR", mon, new Vector3(0.1f, 0, -0.06f), new Vector3(0.006f, 0.14f, 0.08f), M.MetalBlack);
-            for (int i = 0; i < 4; i++)
-                Geo.Cyl("Knob", mon, new Vector3(0.105f, -0.045f + i * 0.03f, 0.0f), 0.008f, 0.012f, DarkGrey, new Vector3(0, 0, 90));
+            // Sucher-Monitor (7") am Arm über der Kamera, zum Kameramann gedreht (wie auf dem Foto vom Set)
+            Geo.Rod("MonArm1", tilt, new Vector3(0f, 0.27f, -0.02f), new Vector3(0f, 0.34f, -0.08f), 0.012f, M.MetalBlack);
+            Geo.Rod("MonArm2", tilt, new Vector3(0f, 0.34f, -0.08f), new Vector3(0f, 0.37f, -0.12f), 0.012f, M.Get("ArmGreen", new Color(0.15f, 0.45f, 0.3f), 0.4f, 0.4f));
+            var mon = Geo.Group("Viewfinder", tilt, new Vector3(0f, 0.43f, -0.13f), 0).transform;
+            mon.localRotation = Quaternion.Euler(-6, 0, 0);
+            Geo.Box("MonBody", mon, new Vector3(0, 0, 0.005f), new Vector3(0.21f, 0.15f, 0.05f), MonitorBlue);
+            Geo.Box("MonBezel", mon, new Vector3(0, 0, -0.021f), new Vector3(0.2f, 0.14f, 0.004f), M.MetalBlack);
+            Geo.Quad("MonScreen", mon, new Vector3(0, -0.004f, -0.0235f), new Vector2(0.17f, 0.11f), M.Emissive("VfScreen", new Color(0.03f, 0.03f, 0.035f), 0.5f), Vector3.zero);
+            // Sonnenblende
+            Geo.Box("HoodT", mon, new Vector3(0, 0.077f, -0.06f), new Vector3(0.21f, 0.006f, 0.08f), M.MetalBlack);
+            Geo.Box("HoodL", mon, new Vector3(-0.104f, 0, -0.06f), new Vector3(0.006f, 0.15f, 0.08f), M.MetalBlack);
+            Geo.Box("HoodR", mon, new Vector3(0.104f, 0, -0.06f), new Vector3(0.006f, 0.15f, 0.08f), M.MetalBlack);
+            // rote Tally-Leiste oben am Monitor (Richtung Kameramann)
+            Geo.Box("MonTally", mon, new Vector3(0, 0.062f, -0.0235f), new Vector3(0.06f, 0.008f, 0.003f), cam.tallyMat);
+            Geo.Cyl("KnobL", mon, new Vector3(-0.07f, -0.08f, -0.005f), 0.009f, 0.02f, DarkGrey);
+            Geo.Cyl("KnobR", mon, new Vector3(0.07f, -0.08f, -0.005f), 0.009f, 0.02f, DarkGrey);
+            cam.viewfinder = mon;
 
             // Schwenkarme: links mit Zoom-Fernbedienung, rechts mit Fokus
             Geo.Rod("PanBarL", tilt, new Vector3(-0.06f, 0.02f, -0.1f), new Vector3(-0.24f, -0.06f, -0.62f), 0.013f, M.MetalBlack);

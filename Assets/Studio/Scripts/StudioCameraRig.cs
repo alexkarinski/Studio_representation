@@ -135,7 +135,7 @@ namespace Studio
             if (!InPov) return;
             var cam = Pov;
             Pov = null;
-            Cam.rect = new Rect(0, 0, 1, 1);
+            MonitorScreenRect = Rect.zero;
             if (_povFromWalk && cam != null)
             {
                 // zurück in den Laufmodus: hinter der Kamera stehen, wo der Kameramann steht
@@ -154,18 +154,15 @@ namespace Studio
         }
 
         /// <summary>Sucher wie der Kameramonitor: Bild verkleinert im Monitorgehäuse statt Vollbild.</summary>
-        public static bool MonitorView;
+        public static bool MonitorView = true;
+        /// <summary>Bildschirmfläche des Suchermonitors auf dem Bildschirm (GUI-Koordinaten), im Monitor-Modus.</summary>
+        public static Rect MonitorScreenRect;
 
         /// <summary>16:9-Bildausschnitt in Bildschirmpixeln (GUI-Koordinaten, y nach unten).</summary>
         public static Rect Frame169()
         {
             float w = Screen.width, h = Screen.height;
-            if (MonitorView)
-            {
-                // Monitor oben-mittig, Platz für die Bedienleiste unten
-                float mw = Mathf.Min(w * 0.7f, h * 0.6f * 16f / 9f), mh = mw * 9f / 16f;
-                return new Rect((w - mw) / 2f, h * 0.1f, mw, mh);
-            }
+            if (MonitorView && MonitorScreenRect.width > 1) return MonitorScreenRect;
             if (w / h > 16f / 9f) { float fw = h * 16f / 9f; return new Rect((w - fw) / 2, 0, fw, h); }
             float fh = w * 9f / 16f;
             return new Rect(0, (h - fh) / 2, w, fh);
@@ -381,15 +378,31 @@ namespace Studio
             }
             c.Apply();
 
-            transform.SetPositionAndRotation(c.eye.position, c.eye.rotation);
-            var f = Frame169();
-            if (MonitorView)
+            Cam.rect = new Rect(0, 0, 1, 1);
+            if (MonitorView && c.viewfinder != null)
             {
-                // Kamera rendert nur in den Monitorbereich (Viewport, y nach oben)
-                Cam.rect = new Rect(f.x / Screen.width, 1f - f.yMax / Screen.height, f.width / Screen.width, f.height / Screen.height);
-                Cam.fieldOfView = c.VerticalFov;
+                // Blick des Kameramanns: hinter der Kamera, auf den Suchermonitor (Studio dahinter sichtbar)
+                var vf = c.viewfinder;
+                var center = vf.TransformPoint(StudioCam.ScreenCenterLocal);
+                var eyePos = vf.TransformPoint(new Vector3(0, 0.035f, -0.27f));
+                transform.SetPositionAndRotation(eyePos, Quaternion.LookRotation(center - eyePos, vf.up));
+                Cam.fieldOfView = 48f;
+                // Bildschirmfläche des Monitors auf den Bildschirm projizieren
+                var hs = StudioCam.ScreenSizeLocal * 0.5f;
+                Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = new Vector2(float.MinValue, float.MinValue);
+                for (int i = 0; i < 4; i++)
+                {
+                    var local = StudioCam.ScreenCenterLocal + new Vector3((i & 1) == 0 ? -hs.x : hs.x, (i & 2) == 0 ? -hs.y : hs.y, 0);
+                    var sp = Cam.WorldToScreenPoint(vf.TransformPoint(local));
+                    var gp = new Vector2(sp.x, Screen.height - sp.y);
+                    min = Vector2.Min(min, gp); max = Vector2.Max(max, gp);
+                }
+                MonitorScreenRect = new Rect(min, max - min);
                 return;
             }
+            MonitorScreenRect = Rect.zero;
+            transform.SetPositionAndRotation(c.eye.position, c.eye.rotation);
+            var f = Frame169();
             Cam.rect = new Rect(0, 0, 1, 1);
             // der 16:9-Ausschnitt entspricht dem Bild des 2/3"-Sensors
             float half = Mathf.Tan(c.VerticalFov * 0.5f * Mathf.Deg2Rad) * Screen.height / Mathf.Max(1f, f.height);

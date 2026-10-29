@@ -451,9 +451,37 @@ namespace Studio
         }
 
         FirstPersonHands _hands;
+        Camera _vfCam;
+        RenderTexture _vfRT;
+
+        /// <summary>Bild der Studiokamera für den Suchermonitor (Monitor-Ansicht).</summary>
+        void RenderViewfinder()
+        {
+            var c = rig.Pov;
+            if (c == null || !StudioCameraRig.MonitorView) return;
+            if (_vfCam == null)
+            {
+                _vfRT = new RenderTexture(1024, 576, 24) { name = "Sucher" };
+                _vfCam = new GameObject("ViewfinderCamera").AddComponent<Camera>();
+                _vfCam.transform.SetParent(transform, false);
+                _vfCam.enabled = false;
+                _vfCam.targetTexture = _vfRT;
+                _vfCam.renderingPath = RenderingPath.DeferredShading;
+                _vfCam.allowHDR = false;
+                _vfCam.nearClipPlane = 0.05f;
+                _vfCam.aspect = 16f / 9f;
+                _vfCam.clearFlags = CameraClearFlags.SolidColor;
+                _vfCam.backgroundColor = Color.black;
+                _vfCam.cullingMask = ~(1 << IconRenderer.Layer);
+            }
+            _vfCam.transform.SetPositionAndRotation(c.eye.position, c.eye.rotation);
+            _vfCam.fieldOfView = c.VerticalFov;
+            _vfCam.Render();
+        }
 
         void LateUpdate()
         {
+            RenderViewfinder();
             if (_hands != null) _hands.Tick(rig.InWalk, _carried != null, rig.WalkFeet);
             if (_restored && Time.unscaledTime > _nextAutoSave) { _nextAutoSave = Time.unscaledTime + 30f; AutoSave(); }
             UpdatePaths();
@@ -945,6 +973,7 @@ namespace Studio
             {
                 // saubere Ansicht: nur ein kleiner Knopf, solange die Maus bewegt wird
                 _panelRect = _povBarRect = Rect.zero;
+                if (rig.InPov && StudioCameraRig.MonitorView) DrawViewfinderHud(); // Monitorbild gehört zur Szene
                 float idle = Time.unscaledTime - _lastMouseMove;
                 if (idle < 2.5f)
                 {
@@ -961,7 +990,7 @@ namespace Studio
 
             if (rig.InPov)
             {
-                if (_state.viewfinderOverlay) DrawViewfinderHud();
+                DrawViewfinderHud();
                 GUI.matrix = Matrix4x4.Scale(new Vector3(UiScale, UiScale, 1f));
                 DrawPovBar();
                 return;
@@ -1021,33 +1050,25 @@ namespace Studio
 
             if (StudioCameraRig.MonitorView)
             {
-                // Gehäuse des 7"-Monitors um das Bild, Tally-Leiste oben
-                var housing = new Color(0.06f, 0.065f, 0.075f, 1f);
-                Fill(new Rect(0, 0, sw, f.y), new Color(0.02f, 0.02f, 0.025f, 1f));
-                Fill(new Rect(0, f.yMax, sw, sh - f.yMax), new Color(0.02f, 0.02f, 0.025f, 1f));
-                Fill(new Rect(0, f.y, f.x, f.height), new Color(0.02f, 0.02f, 0.025f, 1f));
-                Fill(new Rect(f.xMax, f.y, sw - f.xMax, f.height), new Color(0.02f, 0.02f, 0.025f, 1f));
-                float bz = 26 * s;
-                var outer = new Rect(f.x - bz, f.y - bz * 2.2f, f.width + bz * 2, f.height + bz * 3.2f);
-                Fill(outer, housing);
-                Fill(new Rect(outer.x + 3 * s, outer.y + 3 * s, outer.width - 6 * s, 2 * s), new Color(1, 1, 1, 0.06f));
-                // schwarzer Bildschirmrand
-                Fill(new Rect(f.x - 6 * s, f.y - 6 * s, f.width + 12 * s, f.height + 12 * s), Color.black);
-                // rote Tally-Leiste (an, wenn live)
-                var tally = new Rect(f.center.x - 60 * s, outer.y + bz * 0.55f, 120 * s, 12 * s);
-                Fill(tally, live ? new Color(1f, 0.12f, 0.1f) : new Color(0.25f, 0.04f, 0.04f));
-                if (live) Fill(new Rect(tally.x - 6 * s, tally.y - 4 * s, tally.width + 12 * s, tally.height + 8 * s), new Color(1f, 0.15f, 0.1f, 0.25f));
-                // Knöpfe unten
-                for (int i = 0; i < 2; i++)
-                    Fill(new Rect(f.center.x + (i == 0 ? -1 : 1) * f.width * 0.32f - 12 * s, outer.yMax - bz * 0.6f, 24 * s, 14 * s), new Color(0.12f, 0.12f, 0.13f));
+                if (f.width < 2 || _vfRT == null) return;
+                // Monitorbild: oben Statuszeile, darunter das 16:9-Kamerabild (wie am Set)
+                Fill(f, Color.black);
+                float imgH = f.width * 9f / 16f;
+                var img = new Rect(f.x, f.yMax - imgH, f.width, imgH);
+                GUI.DrawTexture(img, _vfRT, ScaleMode.StretchToFill, false);
+                DrawViewfinderOverlay(cam, img, new Rect(f.x, f.y, f.width, f.height - imgH), live, s, true);
+                return;
             }
-            else
-            {
-                var dim = new Color(0, 0, 0, 0.85f);
-                if (f.x > 0) { Fill(new Rect(0, 0, f.x, sh), dim); Fill(new Rect(f.xMax, 0, sw - f.xMax, sh), dim); }
-                if (f.y > 0) { Fill(new Rect(0, 0, sw, f.y), dim); Fill(new Rect(0, f.yMax, sw, sh - f.yMax), dim); }
-            }
+            var dim = new Color(0, 0, 0, 0.85f);
+            if (f.x > 0) { Fill(new Rect(0, 0, f.x, sh), dim); Fill(new Rect(f.xMax, 0, sw - f.xMax, sh), dim); }
+            if (f.y > 0) { Fill(new Rect(0, 0, sw, f.y), dim); Fill(new Rect(0, f.yMax, sw, sh - f.yMax), dim); }
+            DrawViewfinderOverlay(cam, f, new Rect(f.x, f.y, f.width, f.height * 0.085f), live, s, false);
+        }
 
+        /// <summary>Raster + Statuszeile (Bezeichnung klein über dem Wert) + REC/Tally, auf ein Bildrechteck.</summary>
+        void DrawViewfinderOverlay(StudioCam cam, Rect f, Rect bar, bool live, float s, bool monitor)
+        {
+            if (!_state.viewfinderOverlay) return;
             // Drittelraster (wie im Kameramonitor)
             var line = new Color(1, 1, 1, 0.55f);
             for (int i = 1; i <= 2; i++)
@@ -1057,23 +1078,23 @@ namespace Studio
             }
 
             // Statuszeile: kleine Bezeichnung über dem Wert
-            float barH = f.height * 0.085f;
-            Fill(new Rect(f.x, f.y, f.width, barH), new Color(0, 0, 0, 0.6f));
+            float barH = bar.height;
+            Fill(bar, new Color(0, 0, 0, monitor ? 1f : 0.6f));
             int fsVal = Mathf.Max(9, Mathf.RoundToInt(barH * 0.36f)), fsKey = Mathf.Max(7, Mathf.RoundToInt(barH * 0.22f));
             var keyStyle = new GUIStyle(_hud) { fontSize = fsKey, alignment = TextAnchor.LowerLeft, normal = { textColor = new Color(0.75f, 0.75f, 0.75f) } };
             var valStyle = new GUIStyle(_hud) { fontSize = fsVal, alignment = TextAnchor.UpperLeft };
             var nameStyle = new GUIStyle(_hudBig) { fontSize = Mathf.RoundToInt(barH * 0.42f) };
-            GUI.Label(new Rect(f.x + barH * 0.4f, f.y, f.width * 0.16f, barH), "Camera " + cam.number, nameStyle);
+            GUI.Label(new Rect(bar.x + barH * 0.4f, bar.y, bar.width * 0.16f, barH), "Camera " + cam.number, nameStyle);
             var keys = new[] { "RES", "FPS", "SPEED", "IRIS", "GAIN", "WB", "FOCAL" };
             var vals = new[] { "1080p", "50", "1/50", "f1.8", "+0dB", Mathf.RoundToInt(_state.lightKelvin / 100f) * 100 + "K", cam.focal.ToString("0") + "mm" };
-            float x0 = f.x + f.width * 0.18f, colW = f.width * 0.095f;
+            float x0 = bar.x + bar.width * 0.2f, colW = bar.width * 0.095f;
             for (int i = 0; i < keys.Length; i++)
             {
-                GUI.Label(new Rect(x0 + i * colW, f.y, colW, barH * 0.45f), keys[i], keyStyle);
-                GUI.Label(new Rect(x0 + i * colW, f.y + barH * 0.45f, colW, barH * 0.55f), vals[i], valStyle);
+                GUI.Label(new Rect(x0 + i * colW, bar.y, colW, barH * 0.45f), keys[i], keyStyle);
+                GUI.Label(new Rect(x0 + i * colW, bar.y + barH * 0.45f, colW, barH * 0.55f), vals[i], valStyle);
             }
             // Akku-Anzeige
-            var bat = new Rect(f.xMax - barH * 1.7f, f.y + barH * 0.25f, barH * 1.3f, barH * 0.5f);
+            var bat = new Rect(bar.xMax - barH * 1.7f, bar.y + barH * 0.25f, barH * 1.3f, barH * 0.5f);
             Fill(bat, new Color(1, 1, 1, 0.85f));
             Fill(new Rect(bat.x + 1.5f * s, bat.y + 1.5f * s, bat.width - 3 * s, bat.height - 3 * s), new Color(0.05f, 0.05f, 0.05f, 1f));
             GUI.Label(bat, "14.5V", new GUIStyle(_hud) { fontSize = Mathf.Max(7, Mathf.RoundToInt(barH * 0.24f)) });
@@ -1082,14 +1103,15 @@ namespace Studio
             if (rec != null && (rec.recording || rec.playing))
             {
                 bool blink = rec.playing || Mathf.Repeat(Time.unscaledTime, 1f) < 0.6f;
-                var rr = new Rect(f.xMax - 170 * s, f.y + barH + 8 * s, 156 * s, 24 * s);
+                var rr = monitor ? new Rect(f.xMax - f.width * 0.24f, f.y + 4 * s, f.width * 0.22f, Mathf.Max(14, f.height * 0.08f))
+                                 : new Rect(f.xMax - 170 * s, f.y + barH + 8 * s, 156 * s, 24 * s);
                 Fill(rr, new Color(0, 0, 0, 0.6f));
                 var t = System.TimeSpan.FromSeconds(rec.time);
                 GUI.Label(rr, (rec.recording ? (blink ? "● REC  " : "   REC  ") : "▶ PLAY  ") + $"{(int)t.TotalMinutes:00}:{t.Seconds:00}.{t.Milliseconds / 100}", new GUIStyle(_hudBig) { fontSize = Mathf.RoundToInt(15 * s) });
             }
 
             // Tally: rote Umrandung im Vollbild, wenn diese Kamera auf Sendung ist
-            if (live && !StudioCameraRig.MonitorView)
+            if (live && !monitor)
             {
                 var red = new Color(0.95f, 0.1f, 0.1f, 0.9f);
                 float t = 4 * s;
