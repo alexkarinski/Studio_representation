@@ -90,6 +90,8 @@ namespace Studio.EditorTools
             Keep("Standard_NormalMSCutout", standard, "_NORMALMAP", "_METALLICGLOSSMAP", "_ALPHATEST_ON");
             Keep("Standard_Glass", standard, "_ALPHAPREMULTIPLY_ON");
             if (sprites != null) Keep("Sprites_Default", sprites);
+            var paper = Shader.Find("Studio/TranslucentPaper");
+            if (paper != null) Keep("Translucent_Paper", paper);
             AssetDatabase.SaveAssets();
         }
 

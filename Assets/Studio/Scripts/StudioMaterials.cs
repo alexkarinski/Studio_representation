@@ -83,6 +83,45 @@ namespace Studio
         public static Material Screen => Emissive("ScreenSet", new Color(0.45f, 0.75f, 0.85f), 0.8f);
         public static Material TagWhite => Get("TagWhite", new Color(0.95f, 0.95f, 0.95f), 0.2f);
 
+        /// <summary>Durchscheinendes Reispapier (Shoji); Fallback: Standard, falls der Shader fehlt.</summary>
+        public static Material Paper
+        {
+            get
+            {
+                if (Cache.TryGetValue("RicePaper", out var m) && m != null) return m;
+                var sh = Shader.Find("Studio/TranslucentPaper");
+                m = sh != null ? new Material(sh) : new Material(Standard);
+                m.name = "RicePaper";
+                m.mainTexture = PaperTexture();
+                m.color = new Color(0.97f, 0.95f, 0.9f);
+                if (sh != null) m.SetFloat("_Transmission", 0.6f);
+                Cache["RicePaper"] = m;
+                return m;
+            }
+        }
+
+        static Texture2D _paper;
+        /// <summary>Feine Faserstruktur des Papiers.</summary>
+        public static Texture2D PaperTexture()
+        {
+            if (_paper != null) return _paper;
+            const int s = 256;
+            _paper = new Texture2D(s, s, TextureFormat.RGBA32, true) { name = "PaperTex", wrapMode = TextureWrapMode.Repeat };
+            var rnd = new System.Random(21);
+            var px = new Color[s * s];
+            for (int y = 0; y < s; y++)
+            for (int x = 0; x < s; x++)
+            {
+                float n = 0.95f + (float)rnd.NextDouble() * 0.05f;
+                // längliche Fasern
+                if (rnd.NextDouble() < 0.004) n -= 0.06f;
+                px[y * s + x] = new Color(n, n, n * 0.985f, 1);
+            }
+            _paper.SetPixels(px);
+            _paper.Apply(true);
+            return _paper;
+        }
+
         // ---- Процедурные текстуры ----
         static Texture2D _panel, _shoji, _noise;
 

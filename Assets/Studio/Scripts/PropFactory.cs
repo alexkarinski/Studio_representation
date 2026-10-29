@@ -521,18 +521,32 @@ namespace Studio
         static GameObject Shoji(Transform r, StudioProp p, Color c)
         {
             var frame = Tint(p, "ShojiFrame", c, 0.3f);
-            var paper = M.Textured("ShojiPaper", M.ShojiTexture(), Color.white, 0.05f);
+            var paper = M.Paper;
             const float pw = 0.5f, ph = 1.8f, ang = 22f;
+            const float inner = pw - 0.07f;            // Papierbreite zwischen den Seitenhölzern
+            const float paperH = ph - 0.07f;
             float step = pw * Mathf.Cos(ang * Mathf.Deg2Rad);
             for (int i = 0; i < 3; i++)
             {
                 var g = Geo.Group("Panel" + i, r, new Vector3((i - 1) * step, 0, 0), i % 2 == 0 ? ang : -ang);
                 var t = g.transform;
-                Geo.Box("Paper", t, new Vector3(0, ph / 2 + 0.02f, 0), new Vector3(pw - 0.04f, ph - 0.06f, 0.008f), paper);
+                float cy = ph / 2 + 0.025f;
+                // dünnes Reispapier: eine Fläche ohne Dicke, beidseitig, lässt Licht durch
+                var sheet = Geo.Quad("Paper", t, new Vector3(0, cy, 0), new Vector2(inner, paperH), paper, Vector3.zero);
+                sheet.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+                // Rahmen
                 Geo.Box("StileL", t, new Vector3(-pw / 2 + 0.02f, ph / 2 + 0.02f, 0), new Vector3(0.035f, ph, 0.03f), frame);
                 Geo.Box("StileR", t, new Vector3(pw / 2 - 0.02f, ph / 2 + 0.02f, 0), new Vector3(0.035f, ph, 0.03f), frame);
                 Geo.Box("RailT", t, new Vector3(0, ph + 0.01f, 0), new Vector3(pw, 0.035f, 0.03f), frame);
                 Geo.Box("RailB", t, new Vector3(0, 0.04f, 0), new Vector3(pw, 0.035f, 0.03f), frame);
+                // Kumiko-Gitter: feine Holzleisten vor und hinter dem Papier (2 Spalten × 6 Reihen)
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    float z = side * 0.006f;
+                    Geo.Box("KumikoV", t, new Vector3(0, cy, z), new Vector3(0.012f, paperH, 0.01f), frame);
+                    for (int k = 1; k < 6; k++)
+                        Geo.Box("KumikoH", t, new Vector3(0, 0.06f + k * paperH / 6f, z), new Vector3(inner, 0.012f, 0.01f), frame);
+                }
             }
             return r.gameObject;
         }
